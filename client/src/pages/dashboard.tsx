@@ -149,7 +149,7 @@ export default function Dashboard() {
                     <i className="fas fa-user text-primary text-sm"></i>
                   </div>
                 )}
-                <span className="text-sm font-medium hidden sm:inline">
+                <span className="text-sm font-medium hidden sm:inline" data-testid="text-username">
                   {user?.firstName || user?.email}
                 </span>
               </div>
@@ -223,7 +223,7 @@ export default function Dashboard() {
                 <Button 
                   type="submit" 
                   disabled={subscribeMutation.isPending || !companies.trim()}
-                  data-testid="button-subscribe"
+                  data-testid="button-save-subscription"
                 >
                   {subscribeMutation.isPending ? (
                     <>
@@ -336,6 +336,7 @@ function NewsletterCard({ newsletter }: { newsletter: Newsletter }) {
               <Button 
                 size="sm" 
                 variant="outline"
+                onClick={() => window.open(newsletter.pdfPath, '_blank')}
                 data-testid={`button-download-${newsletter.id}`}
               >
                 <i className="fas fa-download mr-2"></i>
