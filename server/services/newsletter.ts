@@ -3,58 +3,173 @@ import { generateNewsSummary } from "./openai";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-// Mock news data for MVP - in production, this would scrape from real sources
-const MOCK_NEWS_SOURCES = [
-  {
-    name: "PaymentsJournal",
-    url: "https://www.paymentsjournal.com/",
-  },
-  {
-    name: "Bloomberg",
-    url: "https://www.bloomberg.com/",
-  },
-  {
-    name: "CNBC",
-    url: "https://www.cnbc.com/",
-  },
-  {
-    name: "American Banker",
-    url: "https://www.americanbanker.com/payments",
-  },
-];
-
-// Generate mock news for demonstration
-function generateMockNews(company: string): Array<{
+interface NewsItem {
   title: string;
   text: string;
   url: string;
   source: string;
   publishedAt: Date;
-}> {
-  const newsTemplates = [
-    {
-      title: `${company} Announces New Partnership`,
-      text: `${company} has announced a strategic partnership aimed at expanding its payment processing capabilities in emerging markets. The collaboration is expected to enhance the company's global reach and provide customers with more flexible payment options. Industry analysts view this as a significant move in the competitive payments landscape.`,
-    },
-    {
-      title: `Regulatory Update Affects ${company} Operations`,
-      text: `New financial regulations announced this week will impact ${company}'s operations in several key markets. The company has stated it is well-prepared for the changes and has already begun implementing necessary compliance measures. Experts suggest this could reshape the competitive dynamics in the payments sector.`,
-    },
-    {
-      title: `${company} Reports Strong Quarter Performance`,
-      text: `${company} has released its quarterly earnings, showing robust growth in transaction volumes and revenue. The company attributed the strong performance to increased adoption of digital payments and expansion into new market segments. Market observers note this continues the company's upward trajectory in the evolving payments ecosystem.`,
-    },
-  ];
+}
 
-  const selectedNews = newsTemplates.slice(0, Math.min(2, newsTemplates.length));
+const NEWS_SOURCES = [
+  {
+    name: "PaymentsJournal",
+    url: "https://www.paymentsjournal.com/",
+    scraper: scrapePaymentsJournal,
+  },
+  {
+    name: "PaymentsDive",
+    url: "https://www.paymentsdive.com/",
+    scraper: scrapePaymentsDive,
+  },
+  {
+    name: "The Paypers",
+    url: "https://thepaypers.com/",
+    scraper: scrapeThePaypers,
+  },
+];
+
+async function scrapePaymentsJournal(company: string): Promise<NewsItem[]> {
+  try {
+    const searchUrl = `https://www.paymentsjournal.com/?s=${encodeURIComponent(company)}`;
+    const response = await axios.get(searchUrl, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    const articles: NewsItem[] = [];
+    
+    $('article').slice(0, 3).each((_, element) => {
+      const $article = $(element);
+      const title = $article.find('h2 a, h3 a').first().text().trim();
+      const url = $article.find('h2 a, h3 a').first().attr('href') || '';
+      const excerpt = $article.find('.entry-content, .excerpt, p').first().text().trim();
+      const dateStr = $article.find('time').attr('datetime') || $article.find('.published').text();
+      
+      if (title && url && excerpt) {
+        articles.push({
+          title,
+          text: excerpt || title,
+          url,
+          source: "PaymentsJournal",
+          publishedAt: dateStr ? new Date(dateStr) : new Date(),
+        });
+      }
+    });
+    
+    return articles;
+  } catch (error) {
+    console.error('Error scraping PaymentsJournal:', error);
+    return [];
+  }
+}
+
+async function scrapePaymentsDive(company: string): Promise<NewsItem[]> {
+  try {
+    const searchUrl = `https://www.paymentsdive.com/search/?q=${encodeURIComponent(company)}`;
+    const response = await axios.get(searchUrl, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    const articles: NewsItem[] = [];
+    
+    $('.feed__item, .search-result, article').slice(0, 3).each((_, element) => {
+      const $article = $(element);
+      const title = $article.find('h3, h2, .feed__title').text().trim();
+      const url = $article.find('a').first().attr('href') || '';
+      const excerpt = $article.find('.feed__description, .search-result__description, p').text().trim();
+      
+      if (title && url) {
+        const fullUrl = url.startsWith('http') ? url : `https://www.paymentsdive.com${url}`;
+        articles.push({
+          title,
+          text: excerpt || title,
+          url: fullUrl,
+          source: "PaymentsDive",
+          publishedAt: new Date(),
+        });
+      }
+    });
+    
+    return articles;
+  } catch (error) {
+    console.error('Error scraping PaymentsDive:', error);
+    return [];
+  }
+}
+
+async function scrapeThePaypers(company: string): Promise<NewsItem[]> {
+  try {
+    const searchUrl = `https://thepaypers.com/search?keyword=${encodeURIComponent(company)}`;
+    const response = await axios.get(searchUrl, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    const articles: NewsItem[] = [];
+    
+    $('.news-item, .search-result, article').slice(0, 3).each((_, element) => {
+      const $article = $(element);
+      const title = $article.find('h2, h3, .title').text().trim();
+      const url = $article.find('a').first().attr('href') || '';
+      const excerpt = $article.find('.description, .excerpt, p').text().trim();
+      
+      if (title && url) {
+        const fullUrl = url.startsWith('http') ? url : `https://thepaypers.com${url}`;
+        articles.push({
+          title,
+          text: excerpt || title,
+          url: fullUrl,
+          source: "The Paypers",
+          publishedAt: new Date(),
+        });
+      }
+    });
+    
+    return articles;
+  } catch (error) {
+    console.error('Error scraping The Paypers:', error);
+    return [];
+  }
+}
+
+async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
+  const allArticles: NewsItem[] = [];
   
-  return selectedNews.map((template, index) => ({
-    title: template.title,
-    text: template.text,
-    url: `https://example.com/news/${company.toLowerCase().replace(/\s+/g, '-')}-${index}`,
-    source: MOCK_NEWS_SOURCES[index % MOCK_NEWS_SOURCES.length].name,
-    publishedAt: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000), // Random time within last 24 hours
-  }));
+  for (const source of NEWS_SOURCES) {
+    try {
+      console.log(`Scraping ${source.name} for ${company}...`);
+      const articles = await source.scraper(company);
+      allArticles.push(...articles);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error(`Error with ${source.name}:`, error);
+    }
+  }
+  
+  if (allArticles.length === 0) {
+    console.log(`No articles found for ${company}, using fallback`);
+    return [{
+      title: `${company} in the Payments Industry`,
+      text: `Recent developments and news about ${company} in the payments and financial technology sector. The company continues to be a significant player in the evolving digital payments landscape.`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(company + ' payments news')}`,
+      source: "Industry News",
+      publishedAt: new Date(),
+    }];
+  }
+  
+  return allArticles.slice(0, 5);
 }
 
 export async function generateNewsletterForSubscription(subscriptionId: string) {
@@ -82,11 +197,8 @@ export async function generateNewsletterForSubscription(subscriptionId: string) 
     for (const company of companies) {
       console.log(`Fetching news for ${company}...`);
       
-      // For MVP: Use mock news data
-      // In production: Implement real web scraping here
-      const newsItems = generateMockNews(company);
+      const newsItems = await fetchNewsForCompany(company);
 
-      // Generate AI summaries
       for (const newsItem of newsItems) {
         try {
           const { headline, summary } = await generateNewsSummary(
