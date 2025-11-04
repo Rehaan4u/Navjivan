@@ -2,28 +2,40 @@ import * as nodemailer from "nodemailer";
 import { storage } from "../storage";
 import fs from "fs";
 
-// For MVP: Log emails instead of sending
-// In production: Configure with real SMTP credentials
-const USE_REAL_EMAIL = false;
+// Automatically detect if SMTP credentials are configured
+const USE_REAL_EMAIL = !!(
+  process.env.SMTP_HOST &&
+  process.env.SMTP_USER &&
+  process.env.SMTP_PASS
+);
+
+if (USE_REAL_EMAIL) {
+  console.log(`Email service: Using SMTP at ${process.env.SMTP_HOST}`);
+} else {
+  console.log("Email service: Using mock mode (emails will be logged, not sent)");
+  console.log("To enable real email sending, configure SMTP_HOST, SMTP_USER, and SMTP_PASS");
+}
 
 // Initialize transporter lazily to avoid module loading issues
 let transporter: nodemailer.Transporter | null = null;
 
 function getTransporter() {
   if (!transporter) {
-    transporter = USE_REAL_EMAIL
-      ? nodemailer.createTransport({
-          host: process.env.SMTP_HOST || "smtp.gmail.com",
-          port: parseInt(process.env.SMTP_PORT || "587"),
-          secure: false,
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          },
-        })
-      : nodemailer.createTransport({
-          jsonTransport: true, // For testing/development
-        });
+    if (USE_REAL_EMAIL) {
+      transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST!,
+        port: parseInt(process.env.SMTP_PORT || "587"),
+        secure: process.env.SMTP_PORT === "465", // true for port 465, false for other ports
+        auth: {
+          user: process.env.SMTP_USER!,
+          pass: process.env.SMTP_PASS!,
+        },
+      });
+    } else {
+      transporter = nodemailer.createTransport({
+        jsonTransport: true, // For testing/development
+      });
+    }
   }
   return transporter;
 }
@@ -125,7 +137,7 @@ Read more: ${article.sourceUrl}
     }
 
     const mailOptions = {
-      from: '"Payment Chronicle" <noreply@paymentchronicle.com>',
+      from: process.env.SMTP_FROM || '"Payment Chronicle" <noreply@paymentchronicle.com>',
       to: recipientEmail,
       subject: `Payment Chronicle - ${formattedDate}`,
       text: textBody,

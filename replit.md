@@ -76,12 +76,25 @@ The platform aggregates news from premium industry sources:
 - The Economist
 
 ### Environment Variables
-- `DATABASE_URL`: PostgreSQL connection string (auto-configured)
-- `SESSION_SECRET`: Session encryption key (auto-configured)
-- `AI_INTEGRATIONS_OPENAI_BASE_URL`: OpenAI API endpoint (auto-configured)
-- `AI_INTEGRATIONS_OPENAI_API_KEY`: OpenAI API key (auto-configured)
-- `REPL_ID`: Replit project ID (auto-configured)
-- `ISSUER_URL`: OIDC issuer URL (auto-configured)
+
+**Auto-Configured (Replit):**
+- `DATABASE_URL`: PostgreSQL connection string
+- `SESSION_SECRET`: Session encryption key
+- `AI_INTEGRATIONS_OPENAI_BASE_URL`: OpenAI API endpoint
+- `AI_INTEGRATIONS_OPENAI_API_KEY`: OpenAI API key
+- `REPL_ID`: Replit project ID
+- `ISSUER_URL`: OIDC issuer URL
+
+**Optional (Email Configuration):**
+- `SMTP_HOST`: SMTP server hostname (e.g., smtp.gmail.com, smtp.sendgrid.net)
+- `SMTP_PORT`: SMTP server port (default: 587 for TLS, 465 for SSL)
+- `SMTP_USER`: SMTP username/email
+- `SMTP_PASS`: SMTP password/API key
+- `SMTP_FROM`: Sender email address (default: "Payment Chronicle <noreply@paymentchronicle.com>")
+
+**Email Service Modes:**
+- Development (default): Emails are logged to console, not sent
+- Production: Automatically enabled when SMTP_HOST, SMTP_USER, and SMTP_PASS are configured
 
 ### Development Workflow
 1. Schema changes: Update `shared/schema.ts`, then run `npm run db:push`

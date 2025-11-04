@@ -336,7 +336,7 @@ function NewsletterCard({ newsletter }: { newsletter: Newsletter }) {
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={() => window.open(newsletter.pdfPath, '_blank')}
+                onClick={() => newsletter.pdfPath && window.open(newsletter.pdfPath, '_blank')}
                 data-testid={`button-download-${newsletter.id}`}
               >
                 <i className="fas fa-download mr-2"></i>
