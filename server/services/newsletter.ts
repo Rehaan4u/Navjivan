@@ -1,7 +1,8 @@
 import { storage } from "../storage";
-import { generateNewsSummary } from "./openai";
+import { generateNewsSummary, scoreArticleRelevance } from "./openai";
 import axios from "axios";
 import * as cheerio from "cheerio";
+import pLimit from "p-limit";
 
 interface NewsItem {
   title: string;
@@ -143,6 +144,137 @@ async function scrapeThePaypers(company: string): Promise<NewsItem[]> {
   }
 }
 
+function calculateSimilarity(str1: string, str2: string): number {
+  const s1 = str1.toLowerCase().trim();
+  const s2 = str2.toLowerCase().trim();
+  
+  if (s1 === s2) return 1;
+  
+  const len1 = s1.length;
+  const len2 = s2.length;
+  const maxLen = Math.max(len1, len2);
+  if (maxLen === 0) return 1;
+  
+  const distance = levenshteinDistance(s1, s2);
+  return 1 - distance / maxLen;
+}
+
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix: number[][] = [];
+  
+  for (let i = 0; i <= str1.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str2.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str1.length; i++) {
+    for (let j = 1; j <= str2.length; j++) {
+      if (str1[i - 1] === str2[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  return matrix[str1.length][str2.length];
+}
+
+function removeDuplicates(articles: NewsItem[]): NewsItem[] {
+  const unique: NewsItem[] = [];
+  const SIMILARITY_THRESHOLD = 0.75;
+  
+  for (const article of articles) {
+    let isDuplicate = false;
+    
+    for (const existing of unique) {
+      const titleSimilarity = calculateSimilarity(article.title, existing.title);
+      
+      if (titleSimilarity > SIMILARITY_THRESHOLD) {
+        isDuplicate = true;
+        console.log(`Duplicate found: "${article.title}" similar to "${existing.title}" (${(titleSimilarity * 100).toFixed(1)}%)`);
+        break;
+      }
+      
+      if (article.url === existing.url) {
+        isDuplicate = true;
+        console.log(`Duplicate URL found: ${article.url}`);
+        break;
+      }
+    }
+    
+    if (!isDuplicate) {
+      unique.push(article);
+    }
+  }
+  
+  console.log(`Removed ${articles.length - unique.length} duplicate articles`);
+  return unique;
+}
+
+function filterRelevantArticles(articles: NewsItem[], company: string): NewsItem[] {
+  const PAYMENTS_KEYWORDS = [
+    'payment', 'payments', 'fintech', 'financial', 'transaction', 'banking',
+    'merchant', 'checkout', 'credit card', 'debit', 'mobile wallet', 'digital wallet',
+    'pos', 'point of sale', 'ecommerce', 'e-commerce', 'processor', 'gateway',
+    'acquiring', 'issuing', 'settlement', 'compliance', 'regulation', 'fraud',
+    'security', 'authentication', 'tokenization', 'cryptocurrency', 'blockchain',
+    'revenue', 'earnings', 'partnership', 'acquisition', 'growth', 'expansion'
+  ];
+  
+  return articles.filter(article => {
+    const combinedText = `${article.title} ${article.text}`.toLowerCase();
+    const companyLower = company.toLowerCase();
+    
+    const mentionsCompany = combinedText.includes(companyLower);
+    
+    const hasPaymentsKeyword = PAYMENTS_KEYWORDS.some(keyword => 
+      combinedText.includes(keyword.toLowerCase())
+    );
+    
+    const isRelevant = mentionsCompany || hasPaymentsKeyword;
+    
+    if (!isRelevant) {
+      console.log(`Filtered out irrelevant article: "${article.title}"`);
+    }
+    
+    return isRelevant;
+  });
+}
+
+async function scoreArticlesWithAI(
+  articles: NewsItem[],
+  company: string
+): Promise<Array<NewsItem & { relevanceScore: number }>> {
+  const RELEVANCE_THRESHOLD = 60;
+  const limit = pLimit(3);
+  
+  const scoredArticles = await Promise.all(
+    articles.map(article =>
+      limit(async () => {
+        const score = await scoreArticleRelevance(article.title, article.text, company);
+        console.log(`AI scored "${article.title.substring(0, 50)}..." → ${score}/100`);
+        return { ...article, relevanceScore: score };
+      })
+    )
+  );
+  
+  const filtered = scoredArticles
+    .filter(article => article.relevanceScore >= RELEVANCE_THRESHOLD)
+    .sort((a, b) => b.relevanceScore - a.relevanceScore);
+  
+  console.log(`${filtered.length}/${scoredArticles.length} articles passed AI relevance threshold (≥${RELEVANCE_THRESHOLD})`);
+  
+  return filtered;
+}
+
 async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
   const allArticles: NewsItem[] = [];
   
@@ -169,7 +301,18 @@ async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
     }];
   }
   
-  return allArticles.slice(0, 5);
+  console.log(`Found ${allArticles.length} raw articles for ${company}`);
+  
+  const keywordFiltered = filterRelevantArticles(allArticles, company);
+  console.log(`${keywordFiltered.length} articles after keyword filtering`);
+  
+  const deduplicated = removeDuplicates(keywordFiltered);
+  console.log(`${deduplicated.length} unique articles after deduplication`);
+  
+  const aiScored = await scoreArticlesWithAI(deduplicated, company);
+  console.log(`${aiScored.length} articles after AI relevance scoring`);
+  
+  return aiScored.slice(0, 5);
 }
 
 export async function generateNewsletterForSubscription(subscriptionId: string) {
