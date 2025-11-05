@@ -316,60 +316,89 @@ async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
 }
 
 export async function generateNewsletterForSubscription(subscriptionId: string) {
+  console.log(`\n========== STARTING NEWSLETTER GENERATION ==========`);
+  console.log(`Subscription ID: ${subscriptionId}`);
+  
   try {
     // Get subscription details
+    console.log(`Fetching subscription details...`);
     const subscription = await storage.getSubscriptionById(subscriptionId);
-    if (!subscription || !subscription.isActive) {
-      console.log(`Subscription ${subscriptionId} not found or inactive`);
-      return;
+    if (!subscription) {
+      console.error(`❌ Subscription ${subscriptionId} not found`);
+      throw new Error(`Subscription not found: ${subscriptionId}`);
+    }
+    
+    if (!subscription.isActive) {
+      console.log(`⏸️  Subscription ${subscriptionId} is inactive, skipping`);
+      return null;
     }
 
-    const companies = subscription.companies.split(',').map(c => c.trim());
-    console.log(`Generating newsletter for companies: ${companies.join(', ')}`);
+    console.log(`✅ Found active subscription for user: ${subscription.userId}`);
+    const companies = subscription.companies.split(',').map(c => c.trim()).filter(c => c.length > 0);
+    console.log(`📋 Companies to track: ${companies.join(', ')} (${companies.length} total)`);
 
     // Create newsletter record
+    console.log(`\n📰 Creating newsletter record...`);
     const newsletter = await storage.createNewsletter({
       subscriptionId: subscription.id,
       userId: subscription.userId,
       companies: subscription.companies,
     });
+    console.log(`✅ Created newsletter ${newsletter.id}`);
 
     // Fetch and summarize news for each company
     const allArticles = [];
+    console.log(`\n🔍 Starting news collection and AI summarization...`);
 
-    for (const company of companies) {
-      console.log(`Fetching news for ${company}...`);
+    for (let i = 0; i < companies.length; i++) {
+      const company = companies[i];
+      console.log(`\n--- Processing Company ${i + 1}/${companies.length}: ${company} ---`);
       
-      const newsItems = await fetchNewsForCompany(company);
+      try {
+        const newsItems = await fetchNewsForCompany(company);
+        console.log(`Found ${newsItems.length} relevant articles for ${company}`);
 
-      for (const newsItem of newsItems) {
-        try {
-          const { headline, summary } = await generateNewsSummary(
-            newsItem.text,
-            company
-          );
+        for (let j = 0; j < newsItems.length; j++) {
+          const newsItem = newsItems[j];
+          console.log(`\n  Article ${j + 1}/${newsItems.length}: "${newsItem.title.substring(0, 60)}..."`);
+          
+          try {
+            console.log(`  🤖 Calling OpenAI GPT-5 to generate summary...`);
+            const { headline, summary } = await generateNewsSummary(
+              newsItem.text,
+              company
+            );
+            console.log(`  ✅ AI generated headline: "${headline.substring(0, 60)}..."`);
 
-          const article = await storage.createArticle({
-            newsletterId: newsletter.id,
-            headline,
-            summary,
-            sourceUrl: newsItem.url,
-            sourceName: newsItem.source,
-            publishedAt: newsItem.publishedAt,
-          });
+            const article = await storage.createArticle({
+              newsletterId: newsletter.id,
+              headline,
+              summary,
+              sourceUrl: newsItem.url,
+              sourceName: newsItem.source,
+              publishedAt: newsItem.publishedAt,
+            });
 
-          allArticles.push(article);
-        } catch (error) {
-          console.error(`Error generating summary for ${company}:`, error);
-          // Continue with other articles even if one fails
+            allArticles.push(article);
+            console.log(`  💾 Saved article ${article.id}`);
+          } catch (error) {
+            console.error(`  ❌ Error generating summary for article:`, error);
+            // Continue with other articles even if one fails
+          }
         }
+      } catch (error) {
+        console.error(`❌ Error processing company ${company}:`, error);
+        // Continue with other companies even if one fails
       }
     }
 
-    console.log(`Generated newsletter ${newsletter.id} with ${allArticles.length} articles`);
+    console.log(`\n========== NEWSLETTER GENERATION COMPLETE ==========`);
+    console.log(`📊 Newsletter ${newsletter.id} contains ${allArticles.length} articles`);
+    console.log(`✉️  Ready for email delivery to user ${subscription.userId}`);
+    
     return newsletter;
   } catch (error) {
-    console.error("Error generating newsletter:", error);
+    console.error(`\n❌ FATAL ERROR in newsletter generation:`, error);
     throw error;
   }
 }
