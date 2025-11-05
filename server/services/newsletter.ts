@@ -318,7 +318,7 @@ async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
 export async function generateNewsletterForSubscription(subscriptionId: string) {
   try {
     // Get subscription details
-    const subscription = await storage.getSubscription(subscriptionId);
+    const subscription = await storage.getSubscriptionById(subscriptionId);
     if (!subscription || !subscription.isActive) {
       console.log(`Subscription ${subscriptionId} not found or inactive`);
       return;
