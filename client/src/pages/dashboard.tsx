@@ -74,9 +74,14 @@ export default function Dashboard() {
   const subscribeMutation = useMutation({
     mutationFn: async (data: { companies: string }) => {
       const method = subscription ? "PUT" : "POST";
-      return await apiRequest(method, "/api/subscriptions", data);
+      const response = await apiRequest(method, "/api/subscriptions", data);
+      return await response.json() as Subscription;
     },
-    onSuccess: () => {
+    onSuccess: (data: Subscription) => {
+      console.log("Subscription mutation successful, data:", data);
+      // Update cache with the returned subscription
+      queryClient.setQueryData(["/api/subscriptions"], data);
+      // Also invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       toast({
         title: "Success",
