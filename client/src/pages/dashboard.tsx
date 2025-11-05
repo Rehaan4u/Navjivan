@@ -32,9 +32,29 @@ export default function Dashboard() {
   }, [user, authLoading, toast]);
 
   // Fetch subscription
-  const { data: subscription, isLoading: subscriptionLoading } = useQuery<Subscription>({
+  const { data: subscription, isLoading: subscriptionLoading } = useQuery<Subscription | null>({
     queryKey: ["/api/subscriptions"],
     enabled: !!user,
+    retry: false,
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/subscriptions", {
+          credentials: "include",
+        });
+        if (response.status === 404) {
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error("Failed to fetch subscription");
+        }
+        return response.json();
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("404")) {
+          return null;
+        }
+        throw error;
+      }
+    },
   });
 
   // Fetch newsletters
