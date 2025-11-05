@@ -85,6 +85,28 @@ export default function Dashboard() {
     },
   });
 
+  // Manual newsletter generation mutation
+  const triggerNewsletterMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/admin/trigger-newsletters", {});
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/newsletters"] });
+      toast({
+        title: "Newsletter Generated!",
+        description: `Successfully generated newsletter. Check your email at ${user?.email}`,
+      });
+      console.log("Newsletter generation results:", data);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate newsletter",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -240,6 +262,56 @@ export default function Dashboard() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Manual Newsletter Generation (Admin) */}
+          {subscription && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <i className="fas fa-bolt text-primary"></i>
+                  Generate Newsletter Now
+                </CardTitle>
+                <CardDescription>
+                  Immediately generate and send your newsletter instead of waiting for tomorrow's scheduled delivery
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                    <p className="text-sm font-medium">
+                      <i className="fas fa-info-circle text-primary mr-2"></i>
+                      What happens when you click this button:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-6">
+                      <li>• Scrapes latest news from premium industry sources</li>
+                      <li>• AI analyzes and scores articles for relevance</li>
+                      <li>• Generates Finshots-style summaries</li>
+                      <li>• Creates professional PDF newsletter</li>
+                      <li>• Sends email to {user?.email}</li>
+                    </ul>
+                  </div>
+                  <Button
+                    onClick={() => triggerNewsletterMutation.mutate()}
+                    disabled={triggerNewsletterMutation.isPending}
+                    size="lg"
+                    data-testid="button-trigger-newsletter"
+                  >
+                    {triggerNewsletterMutation.isPending ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                        Generating Newsletter...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-rocket mr-2"></i>
+                        Generate & Send Newsletter Now
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Newsletter Archive */}
           <div className="space-y-6">
