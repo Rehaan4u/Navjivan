@@ -24,10 +24,42 @@ async function runDailyNewsletterGeneration() {
       return;
     }
 
+    // Check which subscriptions already have newsletters successfully sent today
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    
+    const subscriptionsToProcess = [];
+    let skippedCount = 0;
+    
+    for (const subscription of subscriptions) {
+      const newsletters = await storage.getUserNewsletters(subscription.userId);
+      const todayNewsletter = newsletters.find(n => {
+        const generatedDate = new Date(n.generatedAt);
+        return generatedDate >= todayStart && n.subscriptionId === subscription.id && n.emailSent;
+      });
+      
+      if (todayNewsletter) {
+        skippedCount++;
+        console.log(`   ⏭️  Skipping subscription ${subscription.id} - newsletter already sent today`);
+      } else {
+        subscriptionsToProcess.push(subscription);
+      }
+    }
+    
+    if (skippedCount > 0) {
+      console.log(`\n📋 Skipped ${skippedCount} subscription(s) that already received newsletters today`);
+    }
+    
+    if (subscriptionsToProcess.length === 0) {
+      console.log(`✅ All subscriptions already have newsletters for today - nothing to process`);
+      lastScheduledRun = startTime;
+      return;
+    }
+
     let successCount = 0;
     let failureCount = 0;
 
-    for (const subscription of subscriptions) {
+    for (const subscription of subscriptionsToProcess) {
       try {
         const user = await storage.getUser(subscription.userId);
         console.log(`\n📧 Processing subscription ${subscription.id}`);
@@ -84,6 +116,9 @@ async function runDailyNewsletterGeneration() {
     console.log(`📊 NEWSLETTER GENERATION SUMMARY`);
     console.log(`   ✅ Successful: ${successCount}`);
     console.log(`   ❌ Failed: ${failureCount}`);
+    if (skippedCount > 0) {
+      console.log(`   ⏭️  Skipped (already sent): ${skippedCount}`);
+    }
     console.log(`   ⏱️  Duration: ${duration} seconds`);
     console.log(`   🕐 Completed: ${endTime.toISOString()}`);
     console.log(`${"=".repeat(60)}\n`);
@@ -112,8 +147,39 @@ export async function checkAndRunMissedNewsletter() {
   
   if (currentMinutes > scheduledMinutes && !lastScheduledRun) {
     console.log(`⏰ Application started after scheduled time (3:30 AM UTC / 9:00 AM IST)`);
-    console.log(`🚀 Running missed newsletter generation now...`);
-    await runDailyNewsletterGeneration();
+    
+    // Check if newsletters were already successfully sent today
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    
+    const subscriptions = await storage.getAllActiveSubscriptions();
+    let alreadySentCount = 0;
+    let needsGenerationCount = 0;
+    
+    for (const subscription of subscriptions) {
+      const newsletters = await storage.getUserNewsletters(subscription.userId);
+      const todayNewsletter = newsletters.find(n => {
+        const generatedDate = new Date(n.generatedAt);
+        return generatedDate >= todayStart && n.subscriptionId === subscription.id && n.emailSent;
+      });
+      
+      if (todayNewsletter) {
+        alreadySentCount++;
+      } else {
+        needsGenerationCount++;
+      }
+    }
+    
+    if (alreadySentCount > 0) {
+      console.log(`✅ Found ${alreadySentCount} newsletter(s) already sent today - skipping duplicate generation`);
+    }
+    
+    if (needsGenerationCount > 0) {
+      console.log(`🚀 Running missed newsletter generation for ${needsGenerationCount} subscription(s)...`);
+      await runDailyNewsletterGeneration();
+    } else if (alreadySentCount === 0) {
+      console.log(`ℹ️  No active subscriptions found`);
+    }
   } else if (lastScheduledRun) {
     console.log(`✅ Newsletter already ran today at ${lastScheduledRun.toISOString()}`);
   } else {
