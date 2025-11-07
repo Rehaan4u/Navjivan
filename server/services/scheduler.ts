@@ -5,6 +5,121 @@ import { generateNewsletterPDF } from "./pdf";
 import { sendNewsletterEmail } from "./email";
 
 let schedulerRunning = false;
+let lastScheduledRun: Date | null = null;
+
+async function runDailyNewsletterGeneration() {
+  const startTime = new Date();
+  console.log(`\n${"=".repeat(60)}`);
+  console.log(`📅 SCHEDULED NEWSLETTER GENERATION STARTED`);
+  console.log(`🕐 Time: ${startTime.toISOString()} (${startTime.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} IST)`);
+  console.log(`${"=".repeat(60)}\n`);
+
+  try {
+    const subscriptions = await storage.getAllActiveSubscriptions();
+    console.log(`📊 Found ${subscriptions.length} active subscription(s)`);
+
+    if (subscriptions.length === 0) {
+      console.log(`⚠️  No active subscriptions found - skipping newsletter generation`);
+      lastScheduledRun = startTime;
+      return;
+    }
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const subscription of subscriptions) {
+      try {
+        const user = await storage.getUser(subscription.userId);
+        console.log(`\n📧 Processing subscription ${subscription.id}`);
+        console.log(`   User: ${user?.email || subscription.userId}`);
+        console.log(`   Companies: ${subscription.companies}`);
+
+        // Generate newsletter with AI summaries
+        const newsletter = await generateNewsletterForSubscription(
+          subscription.id
+        );
+
+        if (!newsletter) {
+          console.log(`   ❌ Newsletter generation failed`);
+          failureCount++;
+          continue;
+        }
+
+        console.log(`   ✅ Newsletter ${newsletter.id} generated`);
+
+        // Generate PDF
+        try {
+          const pdfPath = await generateNewsletterPDF(newsletter.id);
+          await storage.updateNewsletterPdf(newsletter.id, pdfPath);
+          console.log(`   📄 PDF generated: ${pdfPath}`);
+        } catch (error) {
+          console.error(`   ⚠️  PDF generation failed:`, error);
+          // Continue even if PDF generation fails
+        }
+
+        // Send email
+        if (user?.email) {
+          try {
+            await sendNewsletterEmail(newsletter.id, user.email);
+            console.log(`   ✉️  Email sent to ${user.email}`);
+            successCount++;
+          } catch (error) {
+            console.error(`   ❌ Email sending failed:`, error);
+            failureCount++;
+          }
+        } else {
+          console.log(`   ⚠️  No email address found for user ${subscription.userId}`);
+          failureCount++;
+        }
+      } catch (error) {
+        console.error(`   ❌ Error processing subscription ${subscription.id}:`, error);
+        failureCount++;
+      }
+    }
+
+    const endTime = new Date();
+    const duration = ((endTime.getTime() - startTime.getTime()) / 1000).toFixed(2);
+    
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`📊 NEWSLETTER GENERATION SUMMARY`);
+    console.log(`   ✅ Successful: ${successCount}`);
+    console.log(`   ❌ Failed: ${failureCount}`);
+    console.log(`   ⏱️  Duration: ${duration} seconds`);
+    console.log(`   🕐 Completed: ${endTime.toISOString()}`);
+    console.log(`${"=".repeat(60)}\n`);
+
+    lastScheduledRun = startTime;
+  } catch (error) {
+    console.error(`\n❌ FATAL ERROR in scheduled newsletter generation:`, error);
+    console.error(`${"=".repeat(60)}\n`);
+  }
+}
+
+export async function checkAndRunMissedNewsletter() {
+  console.log(`\n🔍 Checking for missed newsletter runs...`);
+  
+  const now = new Date();
+  const utcHours = now.getUTCHours();
+  const utcMinutes = now.getUTCMinutes();
+  
+  // Scheduled time is 3:30 AM UTC (9:00 AM IST)
+  const scheduledHour = 3;
+  const scheduledMinute = 30;
+  
+  // Check if current time is past the scheduled time today
+  const currentMinutes = utcHours * 60 + utcMinutes;
+  const scheduledMinutes = scheduledHour * 60 + scheduledMinute;
+  
+  if (currentMinutes > scheduledMinutes && !lastScheduledRun) {
+    console.log(`⏰ Application started after scheduled time (3:30 AM UTC / 9:00 AM IST)`);
+    console.log(`🚀 Running missed newsletter generation now...`);
+    await runDailyNewsletterGeneration();
+  } else if (lastScheduledRun) {
+    console.log(`✅ Newsletter already ran today at ${lastScheduledRun.toISOString()}`);
+  } else {
+    console.log(`✅ No missed newsletter - scheduled run is at 3:30 AM UTC (9:00 AM IST)`);
+  }
+}
 
 export function startScheduler() {
   if (schedulerRunning) {
@@ -18,60 +133,16 @@ export function startScheduler() {
   const cronExpression = "30 3 * * *"; // 3:30 AM UTC = 9:00 AM IST
 
   cron.schedule(cronExpression, async () => {
-    console.log("Starting daily newsletter generation...");
-
-    try {
-      const subscriptions = await storage.getAllActiveSubscriptions();
-      console.log(`Found ${subscriptions.length} active subscriptions`);
-
-      for (const subscription of subscriptions) {
-        try {
-          console.log(`Processing subscription ${subscription.id}...`);
-
-          // Generate newsletter with AI summaries
-          const newsletter = await generateNewsletterForSubscription(
-            subscription.id
-          );
-
-          if (!newsletter) {
-            console.log(`Skipping subscription ${subscription.id} - newsletter generation failed`);
-            continue;
-          }
-
-          // Generate PDF
-          try {
-            const pdfPath = await generateNewsletterPDF(newsletter.id);
-            await storage.updateNewsletterPdf(newsletter.id, pdfPath);
-            console.log(`PDF generated for newsletter ${newsletter.id}`);
-          } catch (error) {
-            console.error(`Error generating PDF for newsletter ${newsletter.id}:`, error);
-            // Continue even if PDF generation fails
-          }
-
-          // Send email
-          const user = await storage.getUser(subscription.userId);
-          if (user?.email) {
-            try {
-              await sendNewsletterEmail(newsletter.id, user.email);
-              console.log(`Email sent for newsletter ${newsletter.id}`);
-            } catch (error) {
-              console.error(`Error sending email for newsletter ${newsletter.id}:`, error);
-            }
-          }
-        } catch (error) {
-          console.error(`Error processing subscription ${subscription.id}:`, error);
-          // Continue with other subscriptions
-        }
-      }
-
-      console.log("Daily newsletter generation completed");
-    } catch (error) {
-      console.error("Error in scheduled newsletter generation:", error);
-    }
+    await runDailyNewsletterGeneration();
   });
 
   schedulerRunning = true;
   console.log("Newsletter scheduler started (runs daily at 9:00 AM IST)");
+  
+  // Check for missed newsletters on startup
+  setTimeout(() => {
+    checkAndRunMissedNewsletter();
+  }, 5000); // Wait 5 seconds after startup to check
 }
 
 // Helper function to manually trigger newsletter generation (for testing)
@@ -115,4 +186,13 @@ export async function triggerNewsletterGeneration() {
   }
 
   return results;
+}
+
+export function getSchedulerStatus() {
+  return {
+    running: schedulerRunning,
+    lastRun: lastScheduledRun,
+    nextRunUTC: "3:30 AM UTC",
+    nextRunIST: "9:00 AM IST",
+  };
 }

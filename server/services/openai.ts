@@ -96,11 +96,15 @@ export async function scoreArticleRelevance(
   text: string,
   company: string
 ): Promise<number> {
+  // Truncate text to avoid token limits
+  const maxTextLength = 1000;
+  const truncatedText = text.length > maxTextLength ? text.substring(0, maxTextLength) + "..." : text;
+  
   const prompt = `You are an AI analyst for the payments industry. Evaluate whether this news article is relevant to "${company}" and the payments/fintech industry.
 
 Article Title: ${title}
 
-Article Text: ${text}
+Article Text: ${truncatedText}
 
 Score the relevance from 0 to 100 where:
 - 0-30: Not relevant (unrelated to payments industry or company)
@@ -118,7 +122,7 @@ Return ONLY a JSON object with a single "score" field containing an integer from
             model: "gpt-5",
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
-            max_completion_tokens: 100,
+            max_completion_tokens: 150,
           });
           
           const content = completion.choices[0]?.message?.content || '{"score": 50}';

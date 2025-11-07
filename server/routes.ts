@@ -171,6 +171,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint for scheduler status
+  app.get("/api/health/scheduler", async (_req, res) => {
+    try {
+      const { getSchedulerStatus } = await import("./services/scheduler");
+      const status = getSchedulerStatus();
+      res.json({
+        status: "ok",
+        scheduler: status,
+        currentTimeUTC: new Date().toISOString(),
+        currentTimeIST: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+      });
+    } catch (error) {
+      console.error("Error getting scheduler status:", error);
+      res.status(500).json({ message: "Failed to get scheduler status" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
