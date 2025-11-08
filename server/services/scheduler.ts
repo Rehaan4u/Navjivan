@@ -32,6 +32,15 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 
     if (subscriptions.length === 0) {
       console.log(`⚠️  No active subscriptions found - skipping newsletter generation`);
+      
+      // Update scheduler run record before returning
+      await storage.updateSchedulerRun(schedulerRun.id, {
+        completedAt: new Date(),
+        status: "completed",
+        successCount: "0",
+        failureCount: "0",
+      });
+      
       lastScheduledRun = startTime;
       return;
     }
@@ -65,6 +74,15 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
     
     if (subscriptionsToProcess.length === 0) {
       console.log(`✅ All subscriptions already have newsletters for today - nothing to process`);
+      
+      // Update scheduler run record before returning
+      await storage.updateSchedulerRun(schedulerRun.id, {
+        completedAt: new Date(),
+        status: "completed",
+        successCount: "0",
+        failureCount: "0",
+      });
+      
       lastScheduledRun = startTime;
       return;
     }
