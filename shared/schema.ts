@@ -73,7 +73,7 @@ export const newsletters = pgTable("newsletters", {
   subscriptionId: varchar("subscription_id").notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   companies: text("companies").notNull(), // Companies covered in this newsletter
-  generatedAt: timestamp("generated_at").defaultNow(),
+  generatedAt: timestamp("generated_at").notNull().defaultNow(),
   sentAt: timestamp("sent_at"),
   pdfPath: varchar("pdf_path"), // Path to generated PDF file
   emailSent: boolean("email_sent").notNull().default(false),
@@ -113,3 +113,18 @@ export const articlesRelations = relations(articles, ({ one }) => ({
 }));
 
 export type Article = typeof articles.$inferSelect;
+
+// Scheduler runs table - tracks newsletter generation runs for reliability
+export const schedulerRuns = pgTable("scheduler_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runDate: timestamp("run_date").notNull(), // Date of the run (normalized to start of day)
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  status: varchar("status").notNull().default("running"), // running, completed, failed
+  successCount: varchar("success_count").default("0"),
+  failureCount: varchar("failure_count").default("0"),
+  triggerSource: varchar("trigger_source").notNull(), // cron, manual, startup, external
+  errorMessage: text("error_message"),
+});
+
+export type SchedulerRun = typeof schedulerRuns.$inferSelect;

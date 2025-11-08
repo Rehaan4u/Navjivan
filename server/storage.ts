@@ -4,12 +4,14 @@ import {
   subscriptions,
   newsletters,
   articles,
+  schedulerRuns,
   type User,
   type UpsertUser,
   type Subscription,
   type InsertSubscription,
   type Newsletter,
   type Article,
+  type SchedulerRun,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -47,6 +49,21 @@ export interface IStorage {
     publishedAt?: Date;
   }): Promise<Article>;
   getNewsletterArticles(newsletterId: string): Promise<Article[]>;
+
+  // Scheduler run operations
+  createSchedulerRun(data: {
+    runDate: Date;
+    triggerSource: string;
+  }): Promise<SchedulerRun>;
+  updateSchedulerRun(id: string, data: {
+    completedAt: Date;
+    status: string;
+    successCount: string;
+    failureCount: string;
+    errorMessage?: string;
+  }): Promise<void>;
+  getTodaySchedulerRun(): Promise<SchedulerRun | undefined>;
+  getSchedulerRunByDate(date: Date): Promise<SchedulerRun | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -187,6 +204,57 @@ export class DatabaseStorage implements IStorage {
       .from(articles)
       .where(eq(articles.newsletterId, newsletterId))
       .orderBy(desc(articles.publishedAt));
+  }
+
+  // Scheduler run operations
+  async createSchedulerRun(data: {
+    runDate: Date;
+    triggerSource: string;
+  }): Promise<SchedulerRun> {
+    const [run] = await db
+      .insert(schedulerRuns)
+      .values(data)
+      .returning();
+    return run;
+  }
+
+  async updateSchedulerRun(id: string, data: {
+    completedAt: Date;
+    status: string;
+    successCount: string;
+    failureCount: string;
+    errorMessage?: string;
+  }): Promise<void> {
+    await db
+      .update(schedulerRuns)
+      .set(data)
+      .where(eq(schedulerRuns.id, id));
+  }
+
+  async getTodaySchedulerRun(): Promise<SchedulerRun | undefined> {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    
+    const [run] = await db
+      .select()
+      .from(schedulerRuns)
+      .where(eq(schedulerRuns.runDate, today))
+      .orderBy(desc(schedulerRuns.startedAt))
+      .limit(1);
+    return run;
+  }
+
+  async getSchedulerRunByDate(date: Date): Promise<SchedulerRun | undefined> {
+    const normalized = new Date(date);
+    normalized.setUTCHours(0, 0, 0, 0);
+    
+    const [run] = await db
+      .select()
+      .from(schedulerRuns)
+      .where(eq(schedulerRuns.runDate, normalized))
+      .orderBy(desc(schedulerRuns.startedAt))
+      .limit(1);
+    return run;
   }
 }
 

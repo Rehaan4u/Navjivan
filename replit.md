@@ -4,6 +4,14 @@
 Payment Chronicle is an automated newsletter platform that delivers AI-powered summaries of payments industry news directly to users' inboxes. Built for executives and professionals in the payments sector, it provides Finshots-style concise summaries of relevant news from premium sources.
 
 ## Recent Changes
+- **Nov 8, 2025**: Production scheduler fixes and reliability improvements
+  - Fixed autoscaling issue: Production deployments sleep when inactive
+  - Implemented Replit Cron integration for reliable newsletter delivery
+  - Added `scheduler_runs` table for persistent run tracking
+  - Created `/api/cron/trigger-newsletters` endpoint with CRON_SECRET authentication
+  - Enhanced duplicate prevention with email_sent flag checking
+  - Improved OpenAI token handling (150 tokens, 1000 char limit)
+  - Added production monitoring via `/api/health/scheduler` endpoint
 - **Nov 4, 2025**: Initial project setup with full-stack architecture
   - Implemented Replit Auth for user authentication
   - Set up PostgreSQL database with Drizzle ORM
@@ -63,6 +71,11 @@ Payment Chronicle is an automated newsletter platform that delivers AI-powered s
 - Stores individual news summaries in newsletters
 - Fields: id, newsletterId, headline, summary, sourceUrl, sourceName, publishedAt, createdAt
 
+#### Scheduler Runs Table
+- Tracks newsletter generation runs for production reliability
+- Fields: id, runDate, startedAt, completedAt, status, successCount, failureCount, triggerSource, errorMessage
+- Enables duplicate prevention and production monitoring
+
 ### News Sources
 The platform aggregates news from premium industry sources:
 - PaymentsJournal
@@ -91,6 +104,11 @@ The platform aggregates news from premium industry sources:
 - `SMTP_USER`: SMTP username/email
 - `SMTP_PASS`: SMTP password/API key
 - `SMTP_FROM`: Sender email address (default: "Payment Chronicle <noreply@paymentchronicle.com>")
+
+**Required (Production Scheduling):**
+- `CRON_SECRET`: Secret token for authenticating external cron triggers (recommended: 32+ char random hex)
+  - Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  - Used by Replit Cron to securely trigger `/api/cron/trigger-newsletters`
 
 **Email Service Modes:**
 - Development (default): Emails are logged to console, not sent
@@ -129,13 +147,58 @@ The platform aggregates news from premium industry sources:
 └── design_guidelines.md        # UI/UX design specifications
 ```
 
+## Production Deployment (IMPORTANT)
+
+### Scheduler Reliability Issue
+Replit's autoscaling deployments spin down containers when inactive. This means:
+- ❌ node-cron jobs won't run at 9:00 AM IST if the app is asleep
+- ❌ Startup catch-up logic requires user traffic to wake the container
+- ✅ **Solution**: Use external Replit Cron to trigger newsletter generation
+
+### Setting Up Replit Cron (Required for Production)
+
+1. **Add CRON_SECRET Environment Variable**
+   - Go to Replit Secrets (lock icon in Tools)
+   - Add new secret: `CRON_SECRET`
+   - Value: Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - Example: `912c088a552491a28c745d2010f8afc1d19cae62d81158e6c40faf18d55644cd`
+
+2. **Configure Replit Cron**
+   - Open Tools → Replit Cron
+   - Create new cron job
+   - **Schedule**: `30 3 * * *` (3:30 AM UTC = 9:00 AM IST)
+   - **URL**: `https://your-app.replit.app/api/cron/trigger-newsletters`
+   - **Method**: POST
+   - **Headers**: 
+     ```
+     x-cron-secret: <your-CRON_SECRET-value>
+     ```
+
+3. **Verify Setup**
+   - Test the cron endpoint manually:
+     ```bash
+     curl -X POST https://your-app.replit.app/api/cron/trigger-newsletters \
+       -H "x-cron-secret: YOUR_SECRET_HERE"
+     ```
+   - Check scheduler status:
+     ```bash
+     curl https://your-app.replit.app/api/health/scheduler
+     ```
+
+### Monitoring Production
+- Health check endpoint: `GET /api/health/scheduler`
+- Returns: scheduler status, last run time, next scheduled run
+- Database table: `scheduler_runs` tracks all production runs
+- Query recent runs: `SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT 10;`
+
 ## Current Status
 - ✅ Database schema defined
 - ✅ Authentication system configured
 - ✅ Landing page complete
 - ✅ Dashboard UI complete
-- ⏳ Backend API implementation in progress
-- ⏳ Newsletter generation service pending
-- ⏳ PDF generation pending
-- ⏳ Email delivery pending
-- ⏳ Scheduling system pending
+- ✅ Backend API implementation complete
+- ✅ Newsletter generation service complete
+- ✅ PDF generation complete
+- ✅ Email delivery complete
+- ✅ Scheduling system complete with Replit Cron integration
+- ✅ Production reliability fixes implemented

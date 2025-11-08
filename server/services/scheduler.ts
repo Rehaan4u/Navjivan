@@ -7,12 +7,24 @@ import { sendNewsletterEmail } from "./email";
 let schedulerRunning = false;
 let lastScheduledRun: Date | null = null;
 
-async function runDailyNewsletterGeneration() {
+async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
   const startTime = new Date();
   console.log(`\n${"=".repeat(60)}`);
   console.log(`📅 SCHEDULED NEWSLETTER GENERATION STARTED`);
   console.log(`🕐 Time: ${startTime.toISOString()} (${startTime.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} IST)`);
+  console.log(`📍 Trigger Source: ${triggerSource}`);
   console.log(`${"=".repeat(60)}\n`);
+
+  // Create scheduler run record
+  const runDate = new Date();
+  runDate.setUTCHours(0, 0, 0, 0);
+  
+  const schedulerRun = await storage.createSchedulerRun({
+    runDate,
+    triggerSource,
+  });
+  
+  console.log(`📊 Scheduler run ID: ${schedulerRun.id}`);
 
   try {
     const subscriptions = await storage.getAllActiveSubscriptions();
@@ -34,6 +46,7 @@ async function runDailyNewsletterGeneration() {
     for (const subscription of subscriptions) {
       const newsletters = await storage.getUserNewsletters(subscription.userId);
       const todayNewsletter = newsletters.find(n => {
+        if (!n.generatedAt) return false;
         const generatedDate = new Date(n.generatedAt);
         return generatedDate >= todayStart && n.subscriptionId === subscription.id && n.emailSent;
       });
@@ -123,10 +136,31 @@ async function runDailyNewsletterGeneration() {
     console.log(`   🕐 Completed: ${endTime.toISOString()}`);
     console.log(`${"=".repeat(60)}\n`);
 
+    // Update scheduler run record
+    await storage.updateSchedulerRun(schedulerRun.id, {
+      completedAt: endTime,
+      status: "completed",
+      successCount: successCount.toString(),
+      failureCount: failureCount.toString(),
+    });
+
     lastScheduledRun = startTime;
   } catch (error) {
     console.error(`\n❌ FATAL ERROR in scheduled newsletter generation:`, error);
     console.error(`${"=".repeat(60)}\n`);
+    
+    // Update scheduler run record with error
+    try {
+      await storage.updateSchedulerRun(schedulerRun.id, {
+        completedAt: new Date(),
+        status: "failed",
+        successCount: "0",
+        failureCount: "0",
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    } catch (updateError) {
+      console.error(`Failed to update scheduler run record:`, updateError);
+    }
   }
 }
 
@@ -148,6 +182,15 @@ export async function checkAndRunMissedNewsletter() {
   if (currentMinutes > scheduledMinutes && !lastScheduledRun) {
     console.log(`⏰ Application started after scheduled time (3:30 AM UTC / 9:00 AM IST)`);
     
+    // Check database for today's successful run
+    const todayRun = await storage.getTodaySchedulerRun();
+    
+    if (todayRun && todayRun.status === "completed") {
+      console.log(`✅ Found completed scheduler run from today (${todayRun.startedAt.toISOString()}) - skipping duplicate`);
+      lastScheduledRun = todayRun.startedAt;
+      return;
+    }
+    
     // Check if newsletters were already successfully sent today
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
@@ -159,6 +202,7 @@ export async function checkAndRunMissedNewsletter() {
     for (const subscription of subscriptions) {
       const newsletters = await storage.getUserNewsletters(subscription.userId);
       const todayNewsletter = newsletters.find(n => {
+        if (!n.generatedAt) return false;
         const generatedDate = new Date(n.generatedAt);
         return generatedDate >= todayStart && n.subscriptionId === subscription.id && n.emailSent;
       });
@@ -176,7 +220,7 @@ export async function checkAndRunMissedNewsletter() {
     
     if (needsGenerationCount > 0) {
       console.log(`🚀 Running missed newsletter generation for ${needsGenerationCount} subscription(s)...`);
-      await runDailyNewsletterGeneration();
+      await runDailyNewsletterGeneration("startup");
     } else if (alreadySentCount === 0) {
       console.log(`ℹ️  No active subscriptions found`);
     }
@@ -199,7 +243,7 @@ export function startScheduler() {
   const cronExpression = "30 3 * * *"; // 3:30 AM UTC = 9:00 AM IST
 
   cron.schedule(cronExpression, async () => {
-    await runDailyNewsletterGeneration();
+    await runDailyNewsletterGeneration("cron");
   });
 
   schedulerRunning = true;
@@ -211,47 +255,14 @@ export function startScheduler() {
   }, 5000); // Wait 5 seconds after startup to check
 }
 
-// Helper function to manually trigger newsletter generation (for testing)
-export async function triggerNewsletterGeneration() {
-  console.log("Manually triggering newsletter generation...");
-
-  const subscriptions = await storage.getAllActiveSubscriptions();
-  const results = [];
-
-  for (const subscription of subscriptions) {
-    try {
-      const newsletter = await generateNewsletterForSubscription(subscription.id);
-      
-      if (newsletter) {
-        // Generate PDF
-        try {
-          const pdfPath = await generateNewsletterPDF(newsletter.id);
-          await storage.updateNewsletterPdf(newsletter.id, pdfPath);
-        } catch (error) {
-          console.error(`PDF generation failed for newsletter ${newsletter.id}:`, error);
-        }
-
-        // Send email
-        const user = await storage.getUser(subscription.userId);
-        if (user?.email) {
-          try {
-            await sendNewsletterEmail(newsletter.id, user.email);
-          } catch (error) {
-            console.error(`Email sending failed for newsletter ${newsletter.id}:`, error);
-          }
-        }
-
-        results.push({ success: true, newsletterId: newsletter.id });
-      } else {
-        results.push({ success: false, subscriptionId: subscription.id });
-      }
-    } catch (error: any) {
-      console.error(`Error for subscription ${subscription.id}:`, error);
-      results.push({ success: false, subscriptionId: subscription.id, error: error.message });
-    }
-  }
-
-  return results;
+// Helper function to manually trigger newsletter generation (for testing/cron)
+export async function triggerNewsletterGeneration(triggerSource: string = "manual") {
+  console.log(`Triggering newsletter generation (source: ${triggerSource})...`);
+  
+  // Use the same function that the scheduler uses
+  await runDailyNewsletterGeneration(triggerSource);
+  
+  return { success: true, message: "Newsletter generation completed" };
 }
 
 export function getSchedulerStatus() {

@@ -156,17 +156,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual trigger endpoint (for testing)
+  // Manual trigger endpoint (authenticated - for dashboard use)
   app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res) => {
     try {
-      console.log("Manual newsletter generation triggered");
-      const results = await triggerNewsletterGeneration();
+      console.log("Manual newsletter generation triggered by user");
+      const results = await triggerNewsletterGeneration("manual");
       res.json({
         message: "Newsletter generation triggered",
         results,
       });
     } catch (error) {
       console.error("Error triggering newsletters:", error);
+      res.status(500).json({ message: "Failed to trigger newsletter generation" });
+    }
+  });
+
+  // Cron trigger endpoint (for external cron services like Replit Cron)
+  // This endpoint uses a secret token instead of user authentication
+  app.post("/api/cron/trigger-newsletters", async (req, res) => {
+    try {
+      // Verify cron secret token
+      const cronSecret = process.env.CRON_SECRET;
+      const providedSecret = req.headers['x-cron-secret'] || req.query.secret;
+      
+      if (!cronSecret) {
+        console.error("❌ CRON_SECRET not configured");
+        return res.status(503).json({ 
+          message: "Cron endpoint not configured",
+          error: "CRON_SECRET environment variable is required" 
+        });
+      }
+      
+      if (providedSecret !== cronSecret) {
+        console.error("❌ Invalid cron secret provided");
+        return res.status(401).json({ message: "Unauthorized - invalid secret" });
+      }
+      
+      console.log("✅ Cron trigger authenticated - starting newsletter generation");
+      const results = await triggerNewsletterGeneration("external");
+      
+      res.json({
+        message: "Newsletter generation triggered by cron",
+        timestamp: new Date().toISOString(),
+        results,
+      });
+    } catch (error) {
+      console.error("Error in cron trigger:", error);
       res.status(500).json({ message: "Failed to trigger newsletter generation" });
     }
   });
