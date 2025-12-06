@@ -1,0 +1,130 @@
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+schema: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+severity: 'ERROR',
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+position: '139',
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+o?t(o):n(u)},"cb"),s=new r(function(o,u){n=o,t=u}).catch(o=>{throw Error.captureStackTrace(
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+internalPosition: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+^
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+}
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+where: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+routine: 'parserOpenTable'
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+at async NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+Node.js v20.19.3
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+error: relation "scheduler_runs" does not exist
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+column: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+internalQuery: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+detail: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+hint: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+file: 'parse_relation.c',
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+dataType: undefined,
+2025-12-06 15:45:58.93
+f683f343
+k2zns
+User
+at async DatabaseStorage.getTodaySchedulerRun (file:///home/runner/workspace/dist/index.js:250:23)
+2025-12-06 15:45:58.95
+f683f343
+k2zns
+User
+npm notice New major version of npm available! 10.8.2 -> 11.6.4
+2025-12-06 15:45:58.95
+f683f343
+k2zns
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.4
+2025-12-06 15:45:58.95
+f683f343
+k2zns
+User
+npm notice
+2025-12-06 15:45:58.95
+f683f343
+k2zns
+User
+npm notice
+2025-12-06 15:45:58.95
+f683f343
+k2zns
+User
+npm notice To update run: npm install -g npm@11.6.4
+2025-12-06 15:45:58.96
+f683f343
+k2zns
+System
+run command failed

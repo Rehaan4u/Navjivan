@@ -50,12 +50,12 @@ export interface IStorage {
   }): Promise<Article>;
   getNewsletterArticles(newsletterId: string): Promise<Article[]>;
 
-  // Scheduler run operations
+  // Scheduler run operations (may return null if table doesn't exist)
   createSchedulerRun(data: {
     runDate: Date;
     triggerSource: string;
-  }): Promise<SchedulerRun>;
-  updateSchedulerRun(id: string, data: {
+  }): Promise<SchedulerRun | null>;
+  updateSchedulerRun(id: string | null, data: {
     completedAt: Date;
     status: string;
     successCount: string;
@@ -206,55 +206,92 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(articles.publishedAt));
   }
 
-  // Scheduler run operations
+  // Scheduler run operations - with graceful fallback if table doesn't exist
   async createSchedulerRun(data: {
     runDate: Date;
     triggerSource: string;
-  }): Promise<SchedulerRun> {
-    const [run] = await db
-      .insert(schedulerRuns)
-      .values(data)
-      .returning();
-    return run;
+  }): Promise<SchedulerRun | null> {
+    try {
+      const [run] = await db
+        .insert(schedulerRuns)
+        .values(data)
+        .returning();
+      return run;
+    } catch (error: any) {
+      // Handle missing table gracefully
+      if (error?.message?.includes('does not exist')) {
+        console.warn('⚠️ scheduler_runs table does not exist - run tracking disabled');
+        return null;
+      }
+      throw error;
+    }
   }
 
-  async updateSchedulerRun(id: string, data: {
+  async updateSchedulerRun(id: string | null, data: {
     completedAt: Date;
     status: string;
     successCount: string;
     failureCount: string;
     errorMessage?: string;
   }): Promise<void> {
-    await db
-      .update(schedulerRuns)
-      .set(data)
-      .where(eq(schedulerRuns.id, id));
+    if (!id) return; // Skip if no run ID (table missing)
+    try {
+      await db
+        .update(schedulerRuns)
+        .set(data)
+        .where(eq(schedulerRuns.id, id));
+    } catch (error: any) {
+      // Handle missing table gracefully
+      if (error?.message?.includes('does not exist')) {
+        console.warn('⚠️ scheduler_runs table does not exist - run tracking disabled');
+        return;
+      }
+      throw error;
+    }
   }
 
   async getTodaySchedulerRun(): Promise<SchedulerRun | undefined> {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    
-    const [run] = await db
-      .select()
-      .from(schedulerRuns)
-      .where(eq(schedulerRuns.runDate, today))
-      .orderBy(desc(schedulerRuns.startedAt))
-      .limit(1);
-    return run;
+    try {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      
+      const [run] = await db
+        .select()
+        .from(schedulerRuns)
+        .where(eq(schedulerRuns.runDate, today))
+        .orderBy(desc(schedulerRuns.startedAt))
+        .limit(1);
+      return run;
+    } catch (error: any) {
+      // Handle missing table gracefully
+      if (error?.message?.includes('does not exist')) {
+        console.warn('⚠️ scheduler_runs table does not exist - run tracking disabled');
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async getSchedulerRunByDate(date: Date): Promise<SchedulerRun | undefined> {
-    const normalized = new Date(date);
-    normalized.setUTCHours(0, 0, 0, 0);
-    
-    const [run] = await db
-      .select()
-      .from(schedulerRuns)
-      .where(eq(schedulerRuns.runDate, normalized))
-      .orderBy(desc(schedulerRuns.startedAt))
-      .limit(1);
-    return run;
+    try {
+      const normalized = new Date(date);
+      normalized.setUTCHours(0, 0, 0, 0);
+      
+      const [run] = await db
+        .select()
+        .from(schedulerRuns)
+        .where(eq(schedulerRuns.runDate, normalized))
+        .orderBy(desc(schedulerRuns.startedAt))
+        .limit(1);
+      return run;
+    } catch (error: any) {
+      // Handle missing table gracefully
+      if (error?.message?.includes('does not exist')) {
+        console.warn('⚠️ scheduler_runs table does not exist - run tracking disabled');
+        return undefined;
+      }
+      throw error;
+    }
   }
 }
 

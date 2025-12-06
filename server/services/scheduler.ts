@@ -15,7 +15,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
   console.log(`📍 Trigger Source: ${triggerSource}`);
   console.log(`${"=".repeat(60)}\n`);
 
-  // Create scheduler run record
+  // Create scheduler run record (may be null if table doesn't exist in production)
   const runDate = new Date();
   runDate.setUTCHours(0, 0, 0, 0);
   
@@ -24,7 +24,10 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
     triggerSource,
   });
   
-  console.log(`📊 Scheduler run ID: ${schedulerRun.id}`);
+  const schedulerRunId = schedulerRun?.id ?? null;
+  if (schedulerRunId) {
+    console.log(`📊 Scheduler run ID: ${schedulerRunId}`);
+  }
 
   try {
     const subscriptions = await storage.getAllActiveSubscriptions();
@@ -34,7 +37,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
       console.log(`⚠️  No active subscriptions found - skipping newsletter generation`);
       
       // Update scheduler run record before returning
-      await storage.updateSchedulerRun(schedulerRun.id, {
+      await storage.updateSchedulerRun(schedulerRunId, {
         completedAt: new Date(),
         status: "completed",
         successCount: "0",
@@ -76,7 +79,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
       console.log(`✅ All subscriptions already have newsletters for today - nothing to process`);
       
       // Update scheduler run record before returning
-      await storage.updateSchedulerRun(schedulerRun.id, {
+      await storage.updateSchedulerRun(schedulerRunId, {
         completedAt: new Date(),
         status: "completed",
         successCount: "0",
@@ -155,7 +158,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
     console.log(`${"=".repeat(60)}\n`);
 
     // Update scheduler run record
-    await storage.updateSchedulerRun(schedulerRun.id, {
+    await storage.updateSchedulerRun(schedulerRunId, {
       completedAt: endTime,
       status: "completed",
       successCount: successCount.toString(),
@@ -169,7 +172,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
     
     // Update scheduler run record with error
     try {
-      await storage.updateSchedulerRun(schedulerRun.id, {
+      await storage.updateSchedulerRun(schedulerRunId, {
         completedAt: new Date(),
         status: "failed",
         successCount: "0",
