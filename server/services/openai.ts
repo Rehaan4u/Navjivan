@@ -48,7 +48,7 @@ Return your response in JSON format with "headline" and "summary" fields.`;
             model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
-            max_completion_tokens: 8192,
+            max_completion_tokens: 800,
           });
           
           const content = completion.choices[0]?.message?.content || "{}";

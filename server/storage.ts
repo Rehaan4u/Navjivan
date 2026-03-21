@@ -33,11 +33,14 @@ export interface IStorage {
     subscriptionId: string;
     userId: string;
     companies: string;
+    contentHash?: string;
   }): Promise<Newsletter>;
   updateNewsletterPdf(id: string, pdfPath: string): Promise<void>;
+  updateNewsletterHash(id: string, contentHash: string): Promise<void>;
   markNewsletterSent(id: string): Promise<void>;
   getUserNewsletters(userId: string): Promise<Newsletter[]>;
   getNewsletter(id: string): Promise<Newsletter | undefined>;
+  getLastNewsletterBySubscription(subscriptionId: string): Promise<Newsletter | undefined>;
 
   // Article operations
   createArticle(article: {
@@ -142,6 +145,7 @@ export class DatabaseStorage implements IStorage {
     subscriptionId: string;
     userId: string;
     companies: string;
+    contentHash?: string;
   }): Promise<Newsletter> {
     const [newsletter] = await db
       .insert(newsletters)
@@ -154,6 +158,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(newsletters)
       .set({ pdfPath })
+      .where(eq(newsletters.id, id));
+  }
+
+  async updateNewsletterHash(id: string, contentHash: string): Promise<void> {
+    await db
+      .update(newsletters)
+      .set({ contentHash })
       .where(eq(newsletters.id, id));
   }
 
@@ -178,6 +189,16 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(newsletters)
       .where(eq(newsletters.id, id))
+      .limit(1);
+    return newsletter;
+  }
+
+  async getLastNewsletterBySubscription(subscriptionId: string): Promise<Newsletter | undefined> {
+    const [newsletter] = await db
+      .select()
+      .from(newsletters)
+      .where(eq(newsletters.subscriptionId, subscriptionId))
+      .orderBy(desc(newsletters.generatedAt))
       .limit(1);
     return newsletter;
   }

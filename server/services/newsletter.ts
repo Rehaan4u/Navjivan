@@ -3,6 +3,7 @@ import { generateNewsSummary, scoreArticleRelevance } from "./openai";
 import axios from "axios";
 import * as cheerio from "cheerio";
 import pLimit from "p-limit";
+import { createHash } from "crypto";
 
 interface NewsItem {
   title: string;
@@ -275,18 +276,36 @@ async function scoreArticlesWithAI(
   return filtered;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+function computeContentHash(urls: string[]): string {
+  const sorted = [...urls].sort().join("|");
+  return createHash("md5").update(sorted).digest("hex");
+}
+
 async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
-  const allArticles: NewsItem[] = [];
+  console.log(`Scraping all sources for ${company} in parallel...`);
   
-  for (const source of NEWS_SOURCES) {
-    try {
-      console.log(`Scraping ${source.name} for ${company}...`);
-      const articles = await source.scraper(company);
-      allArticles.push(...articles);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error(`Error with ${source.name}:`, error);
+  const results = await Promise.allSettled(
+    NEWS_SOURCES.map(source =>
+      withTimeout(source.scraper(company), 8000, source.name).catch(err => {
+        console.error(`Error with ${source.name} for ${company}:`, err.message);
+        return [] as NewsItem[];
+      })
+    )
+  );
+  
+  const allArticles: NewsItem[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      allArticles.push(...result.value);
     }
   }
   
@@ -337,58 +356,65 @@ export async function generateNewsletterForSubscription(subscriptionId: string) 
     const companies = subscription.companies.split(',').map(c => c.trim()).filter(c => c.length > 0);
     console.log(`📋 Companies to track: ${companies.join(', ')} (${companies.length} total)`);
 
-    // Create newsletter record
+    // Fetch news for all companies in parallel
+    console.log(`\n🔍 Fetching news for all companies in parallel...`);
+    const companyNewsResults = await Promise.allSettled(
+      companies.map(company => fetchNewsForCompany(company).then(items => ({ company, items })))
+    );
+
+    const companyNewsMap: Array<{ company: string; items: NewsItem[] }> = [];
+    for (const result of companyNewsResults) {
+      if (result.status === "fulfilled") {
+        companyNewsMap.push(result.value);
+      }
+    }
+
+    // Compute content hash from all fetched article URLs
+    const allFetchedUrls = companyNewsMap.flatMap(({ items }) => items.map(i => i.url));
+    const contentHash = computeContentHash(allFetchedUrls);
+    console.log(`📋 Content hash: ${contentHash}`);
+
+    // Check last newsletter's hash — reuse if identical
+    const lastNewsletter = await storage.getLastNewsletterBySubscription(subscription.id);
+    if (lastNewsletter?.contentHash && lastNewsletter.contentHash === contentHash) {
+      console.log(`⚡ Content unchanged (hash match) — reusing newsletter ${lastNewsletter.id}, sending as-is`);
+      return lastNewsletter;
+    }
+
+    // Create newsletter record (new content detected)
     console.log(`\n📰 Creating newsletter record...`);
     const newsletter = await storage.createNewsletter({
       subscriptionId: subscription.id,
       userId: subscription.userId,
       companies: subscription.companies,
+      contentHash,
     });
     console.log(`✅ Created newsletter ${newsletter.id}`);
 
-    // Fetch and summarize news for each company
+    // Generate AI summaries for all articles
     const allArticles = [];
-    console.log(`\n🔍 Starting news collection and AI summarization...`);
+    console.log(`\n🤖 Starting AI summarization...`);
 
-    for (let i = 0; i < companies.length; i++) {
-      const company = companies[i];
-      console.log(`\n--- Processing Company ${i + 1}/${companies.length}: ${company} ---`);
-      
-      try {
-        const newsItems = await fetchNewsForCompany(company);
-        console.log(`Found ${newsItems.length} relevant articles for ${company}`);
-
-        for (let j = 0; j < newsItems.length; j++) {
-          const newsItem = newsItems[j];
-          console.log(`\n  Article ${j + 1}/${newsItems.length}: "${newsItem.title.substring(0, 60)}..."`);
-          
-          try {
-            console.log(`  🤖 Calling OpenAI GPT-5 to generate summary...`);
-            const { headline, summary } = await generateNewsSummary(
-              newsItem.text,
-              company
-            );
-            console.log(`  ✅ AI generated headline: "${headline.substring(0, 60)}..."`);
-
-            const article = await storage.createArticle({
-              newsletterId: newsletter.id,
-              headline,
-              summary,
-              sourceUrl: newsItem.url,
-              sourceName: newsItem.source,
-              publishedAt: newsItem.publishedAt,
-            });
-
-            allArticles.push(article);
-            console.log(`  💾 Saved article ${article.id}`);
-          } catch (error) {
-            console.error(`  ❌ Error generating summary for article:`, error);
-            // Continue with other articles even if one fails
-          }
+    for (const { company, items } of companyNewsMap) {
+      console.log(`\n--- AI summarization for ${company}: ${items.length} articles ---`);
+      for (let j = 0; j < items.length; j++) {
+        const newsItem = items[j];
+        console.log(`  Article ${j + 1}/${items.length}: "${newsItem.title.substring(0, 60)}..."`);
+        try {
+          const { headline, summary } = await generateNewsSummary(newsItem.text, company);
+          console.log(`  ✅ AI headline: "${headline.substring(0, 60)}..."`);
+          const article = await storage.createArticle({
+            newsletterId: newsletter.id,
+            headline,
+            summary,
+            sourceUrl: newsItem.url,
+            sourceName: newsItem.source,
+            publishedAt: newsItem.publishedAt,
+          });
+          allArticles.push(article);
+        } catch (error) {
+          console.error(`  ❌ Error generating summary:`, error);
         }
-      } catch (error) {
-        console.error(`❌ Error processing company ${company}:`, error);
-        // Continue with other companies even if one fails
       }
     }
 

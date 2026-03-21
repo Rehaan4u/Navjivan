@@ -77,6 +77,7 @@ export const newsletters = pgTable("newsletters", {
   sentAt: timestamp("sent_at"),
   pdfPath: varchar("pdf_path"), // Path to generated PDF file
   emailSent: boolean("email_sent").notNull().default(false),
+  contentHash: varchar("content_hash"), // Hash of fetched article URLs for dedup caching
 });
 
 export const newslettersRelations = relations(newsletters, ({ one, many }) => ({
