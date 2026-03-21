@@ -35,7 +35,7 @@ async function scrapePaymentsJournal(company: string): Promise<NewsItem[]> {
   try {
     const searchUrl = `https://www.paymentsjournal.com/?s=${encodeURIComponent(company)}`;
     const response = await axios.get(searchUrl, {
-      timeout: 10000,
+      timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
@@ -73,7 +73,7 @@ async function scrapePaymentsDive(company: string): Promise<NewsItem[]> {
   try {
     const searchUrl = `https://www.paymentsdive.com/search/?q=${encodeURIComponent(company)}`;
     const response = await axios.get(searchUrl, {
-      timeout: 10000,
+      timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
@@ -111,7 +111,7 @@ async function scrapeThePaypers(company: string): Promise<NewsItem[]> {
   try {
     const searchUrl = `https://thepaypers.com/search?keyword=${encodeURIComponent(company)}`;
     const response = await axios.get(searchUrl, {
-      timeout: 10000,
+      timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
@@ -335,6 +335,7 @@ async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
 }
 
 export async function generateNewsletterForSubscription(subscriptionId: string) {
+  console.log("Starting newsletter generation for subscription:", subscriptionId);
   console.log(`\n========== STARTING NEWSLETTER GENERATION ==========`);
   console.log(`Subscription ID: ${subscriptionId}`);
   
@@ -357,6 +358,7 @@ export async function generateNewsletterForSubscription(subscriptionId: string) 
     console.log(`📋 Companies to track: ${companies.join(', ')} (${companies.length} total)`);
 
     // Fetch news for all companies in parallel
+    console.log("Fetching news for companies:", companies);
     console.log(`\n🔍 Fetching news for all companies in parallel...`);
     const companyNewsResults = await Promise.allSettled(
       companies.map(company => fetchNewsForCompany(company).then(items => ({ company, items })))
@@ -424,7 +426,7 @@ export async function generateNewsletterForSubscription(subscriptionId: string) 
     
     return newsletter;
   } catch (error) {
-    console.error(`\n❌ FATAL ERROR in newsletter generation:`, error);
+    console.error("Newsletter generation error:", error);
     throw error;
   }
 }
