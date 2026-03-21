@@ -6,6 +6,7 @@ import { sendNewsletterEmail } from "./email";
 
 let schedulerRunning = false;
 let lastScheduledRun: Date | null = null;
+let manualRunInProgress = false;
 
 async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
   const startTime = new Date();
@@ -50,10 +51,12 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 
     const subscriptionsToProcess: typeof subscriptions = [];
 
-    if (triggerSource === "manual") {
-      subscriptionsToProcess.push(...subscriptions);
-      console.log(`\n🔁 Manual trigger: processing all ${subscriptions.length} subscription(s)`);
-    } else {
+    skipGuard: {
+      if (triggerSource === "manual") {
+        for (const sub of subscriptions) { subscriptionsToProcess.push(sub); }
+        console.log("MANUAL BYPASS ACTIVE");
+        break skipGuard;
+      }
       const todayStart = new Date();
       todayStart.setUTCHours(0, 0, 0, 0);
       let skippedCount = 0;
@@ -173,6 +176,10 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 }
 
 export async function checkAndRunMissedNewsletter() {
+  if (manualRunInProgress) {
+    console.log(`⏸️  Manual run in progress — skipping startup check`);
+    return;
+  }
   console.log(`\n🔍 Checking for missed newsletter runs...`);
   
   const now = new Date();
@@ -267,8 +274,16 @@ export function startScheduler() {
 export async function triggerNewsletterGeneration(triggerSource: string = "manual") {
   console.log(`Triggering newsletter generation (source: ${triggerSource})...`);
   
-  // Use the same function that the scheduler uses
-  await runDailyNewsletterGeneration(triggerSource);
+  if (triggerSource === "manual") {
+    manualRunInProgress = true;
+  }
+  try {
+    await runDailyNewsletterGeneration(triggerSource);
+  } finally {
+    if (triggerSource === "manual") {
+      manualRunInProgress = false;
+    }
+  }
   
   return { success: true, message: "Newsletter generation completed" };
 }
