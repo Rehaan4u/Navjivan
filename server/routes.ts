@@ -158,9 +158,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Manual trigger endpoint (authenticated - for dashboard use)
   app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res) => {
-    console.log("Manual trigger endpoint hit");
     try {
-      console.log("Manual newsletter generation triggered by user:", (req as any).user?.claims?.sub);
+      console.log("Manual newsletter generation triggered by user");
       const results = await triggerNewsletterGeneration("manual");
       res.json({
         message: "Newsletter generation triggered",
