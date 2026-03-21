@@ -124,6 +124,7 @@ export default function Dashboard() {
       console.log("Newsletter generation results:", data);
     },
     onError: (error: Error) => {
+      console.error("Newsletter generation request failed:", error.message);
       toast({
         title: "Generation Failed",
         description: error.message || "Failed to generate newsletter",
@@ -316,7 +317,7 @@ export default function Dashboard() {
                     </ul>
                   </div>
                   <Button
-                    onClick={() => triggerNewsletterMutation.mutate()}
+                    onClick={() => { console.log("Sending request to trigger newsletter"); triggerNewsletterMutation.mutate(); }}
                     disabled={triggerNewsletterMutation.isPending}
                     size="lg"
                     data-testid="button-trigger-newsletter"
