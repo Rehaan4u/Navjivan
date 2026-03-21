@@ -113,7 +113,19 @@ export default function Dashboard() {
   // Manual newsletter generation mutation
   const triggerNewsletterMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", "/api/admin/trigger-newsletters", {});
+      console.log("Fetch firing");
+      const response = await fetch("/api/admin/trigger-newsletters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+        credentials: "include",
+      });
+      console.log("Response:", response.status);
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`${response.status}: ${text}`);
+      }
+      return response;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/newsletters"] });
@@ -317,7 +329,14 @@ export default function Dashboard() {
                     </ul>
                   </div>
                   <Button
-                    onClick={() => { console.log("Sending request to trigger newsletter"); triggerNewsletterMutation.mutate(); }}
+                    onClick={async () => {
+                      try {
+                        console.log("Button clicked");
+                        triggerNewsletterMutation.mutate();
+                      } catch (error) {
+                        console.error("onClick error:", error);
+                      }
+                    }}
                     disabled={triggerNewsletterMutation.isPending}
                     size="lg"
                     data-testid="button-trigger-newsletter"
