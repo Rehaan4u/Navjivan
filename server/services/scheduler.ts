@@ -52,13 +52,11 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 
     if (triggerSource === "manual") {
       subscriptionsToProcess.push(...subscriptions);
-      console.log(`\n🔁 Manual trigger: processing all ${subscriptions.length} subscription(s) — skip guard bypassed`);
+      console.log(`\n🔁 Manual trigger: processing all ${subscriptions.length} subscription(s)`);
     } else {
-      // Cron/scheduled/external trigger: skip subscriptions that already received a newsletter today
       const todayStart = new Date();
       todayStart.setUTCHours(0, 0, 0, 0);
       let skippedCount = 0;
-
       for (const subscription of subscriptions) {
         const newsletters = await storage.getUserNewsletters(subscription.userId);
         const todayNewsletter = newsletters.find(n => {
@@ -66,29 +64,14 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
           const generatedDate = new Date(n.generatedAt);
           return generatedDate >= todayStart && n.subscriptionId === subscription.id && n.emailSent;
         });
-
         if (todayNewsletter) {
           skippedCount++;
-          console.log(`   ⏭️  Skipping subscription ${subscription.id} - newsletter already sent today`);
         } else {
           subscriptionsToProcess.push(subscription);
         }
       }
-
-      if (skippedCount > 0) {
-        console.log(`\n📋 Skipped ${skippedCount} subscription(s) that already received newsletters today`);
-      }
-
       if (subscriptionsToProcess.length === 0) {
-        console.log(`✅ All subscriptions already have newsletters for today - nothing to process`);
-
-        await storage.updateSchedulerRun(schedulerRunId, {
-          completedAt: new Date(),
-          status: "completed",
-          successCount: "0",
-          failureCount: "0",
-        });
-
+        await storage.updateSchedulerRun(schedulerRunId, { completedAt: new Date(), status: "completed", successCount: "0", failureCount: "0" });
         lastScheduledRun = startTime;
         return;
       }
