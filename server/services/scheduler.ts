@@ -48,46 +48,54 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
       return;
     }
 
-    // Check which subscriptions already have newsletters successfully sent today
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    // For manual triggers, bypass the "already sent today" skip guard entirely
+    const isManual = triggerSource === "manual";
     
     const subscriptionsToProcess = [];
     let skippedCount = 0;
-    
-    for (const subscription of subscriptions) {
-      const newsletters = await storage.getUserNewsletters(subscription.userId);
-      const todayNewsletter = newsletters.find(n => {
-        if (!n.generatedAt) return false;
-        const generatedDate = new Date(n.generatedAt);
-        return generatedDate >= todayStart && n.subscriptionId === subscription.id && n.emailSent;
-      });
+
+    if (isManual) {
+      // Manual trigger: always process all active subscriptions
+      subscriptionsToProcess.push(...subscriptions);
+      console.log(`\n🔁 Manual trigger: bypassing skip guard — processing all ${subscriptions.length} subscription(s)`);
+    } else {
+      // Cron/scheduled trigger: skip subscriptions that already received a newsletter today
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
       
-      if (todayNewsletter) {
-        skippedCount++;
-        console.log(`   ⏭️  Skipping subscription ${subscription.id} - newsletter already sent today`);
-      } else {
-        subscriptionsToProcess.push(subscription);
+      for (const subscription of subscriptions) {
+        const newsletters = await storage.getUserNewsletters(subscription.userId);
+        const todayNewsletter = newsletters.find(n => {
+          if (!n.generatedAt) return false;
+          const generatedDate = new Date(n.generatedAt);
+          return generatedDate >= todayStart && n.subscriptionId === subscription.id && n.emailSent;
+        });
+        
+        if (todayNewsletter) {
+          skippedCount++;
+          console.log(`   ⏭️  Skipping subscription ${subscription.id} - newsletter already sent today`);
+        } else {
+          subscriptionsToProcess.push(subscription);
+        }
       }
-    }
-    
-    if (skippedCount > 0) {
-      console.log(`\n📋 Skipped ${skippedCount} subscription(s) that already received newsletters today`);
-    }
-    
-    if (subscriptionsToProcess.length === 0) {
-      console.log(`✅ All subscriptions already have newsletters for today - nothing to process`);
       
-      // Update scheduler run record before returning
-      await storage.updateSchedulerRun(schedulerRunId, {
-        completedAt: new Date(),
-        status: "completed",
-        successCount: "0",
-        failureCount: "0",
-      });
+      if (skippedCount > 0) {
+        console.log(`\n📋 Skipped ${skippedCount} subscription(s) that already received newsletters today`);
+      }
       
-      lastScheduledRun = startTime;
-      return;
+      if (subscriptionsToProcess.length === 0) {
+        console.log(`✅ All subscriptions already have newsletters for today - nothing to process`);
+        
+        await storage.updateSchedulerRun(schedulerRunId, {
+          completedAt: new Date(),
+          status: "completed",
+          successCount: "0",
+          failureCount: "0",
+        });
+        
+        lastScheduledRun = startTime;
+        return;
+      }
     }
 
     let successCount = 0;
