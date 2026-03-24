@@ -214,7 +214,7 @@ export default function Dashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
             {/* Welcome Banner */}
-            <div className="pc-banner">
+            <div className="pc-banner animate-float" style={{ animationDelay: "0ms" }}>
               <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
                 <div>
                   <div className="pc-banner-eyebrow">Good to see you</div>
@@ -246,7 +246,7 @@ export default function Dashboard() {
             </div>
 
             {/* Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }} className="lg:grid-cols-3-custom">
+            <div className="animate-float" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24, animationDelay: "80ms" }} >
               <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 24 }} className="grid-responsive">
 
                 {/* Company Preferences */}
@@ -315,7 +315,7 @@ export default function Dashboard() {
                     <div>
                       <button type="submit" className="pc-btn-gold" disabled={subscribeMutation.isPending || selectedCompanies.length === 0} data-testid="button-save-subscription">
                         {subscribeMutation.isPending
-                          ? <><div style={{ width: 14, height: 14, border: "2px solid rgba(10,15,30,0.3)", borderTopColor: "#0a0f1e", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />{subscription ? "Updating…" : "Subscribing…"}</>
+                          ? <><div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.30)", borderTopColor: "#ffffff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />{subscription ? "Updating…" : "Subscribing…"}</>
                           : <><Settings size={14} />{subscription ? "Update Preferences" : "Start My Newsletter"}</>
                         }
                       </button>
@@ -342,7 +342,7 @@ export default function Dashboard() {
                     >
                       <div className="pc-action-icon-primary">
                         {triggerMutation.isPending
-                          ? <div style={{ width: 16, height: 16, border: "2px solid rgba(10,15,30,0.3)", borderTopColor: "#0a0f1e", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                          ? <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.30)", borderTopColor: "#ffffff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                           : <Send size={16} />
                         }
                       </div>
@@ -372,62 +372,11 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Recent Newsletters Timeline */}
-            <div className="pc-card pc-card-inner">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div className="pc-section-icon"><Clock size={18} /></div>
-                  <div>
-                    <div className="pc-section-title">Recent Newsletters</div>
-                    <div className="pc-section-desc">Your latest briefings</div>
-                  </div>
-                </div>
-                {newsletters.length > 3 && (
-                  <button className="pc-gold-link" onClick={() => setActiveView("archive")}>
-                    View all {newsletters.length} →
-                  </button>
-                )}
-              </div>
-
-              {newslettersLoading ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {[1, 2].map(i => (
-                    <div key={i} style={{ display: "flex", gap: 16 }}>
-                      <div className="pc-skeleton" style={{ width: 12, height: 12, borderRadius: "50%", flexShrink: 0, marginTop: 4 }} />
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                        <div className="pc-skeleton" style={{ height: 14, width: 140 }} />
-                        <div className="pc-skeleton" style={{ height: 12, width: "100%" }} />
-                        <div className="pc-skeleton" style={{ height: 12, width: "70%" }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : recentNewsletters.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 0" }}>
-                  <div style={{ width: 56, height: 56, background: "var(--pc-surface-2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
-                    <Newspaper size={24} color="var(--pc-text-muted)" />
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--pc-text)", marginBottom: 4 }}>No newsletters yet</div>
-                  <div style={{ fontSize: 13, color: "var(--pc-text-muted)" }}>
-                    {subscription ? "Your first newsletter arrives tomorrow at 9:00 AM IST" : "Subscribe to companies above to get started"}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ position: "relative" }}>
-                  <div className="pc-timeline-line" />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                    {recentNewsletters.map((nl, idx) => (
-                      <TimelineCard key={nl.id} newsletter={nl} isLast={idx === recentNewsletters.length - 1} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
         {activeView === "archive" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="animate-float" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: "var(--pc-text)", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Newsletter Archive</div>
@@ -450,7 +399,7 @@ export default function Dashboard() {
               </div>
             ) : newsletters.length === 0 ? (
               <div className="pc-card" style={{ padding: "60px 32px", textAlign: "center" }}>
-                <div style={{ width: 64, height: 64, background: "var(--pc-surface-2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <div style={{ width: 64, height: 64, background: "rgba(241,245,249,0.90)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", border: "1px solid var(--pc-border)" }}>
                   <Newspaper size={28} color="var(--pc-text-muted)" />
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 600, color: "var(--pc-text)", marginBottom: 6 }}>No newsletters yet</div>
