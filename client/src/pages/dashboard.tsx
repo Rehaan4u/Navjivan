@@ -155,8 +155,8 @@ export default function Dashboard() {
 
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-              <div style={{ width: 36, height: 36, background: "var(--pc-gold-soft)", border: "1px solid var(--pc-gold-border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Newspaper size={18} color="var(--pc-gold)" />
+              <div style={{ width: 36, height: 36, background: "rgba(255,255,255,0.20)", border: "1px solid rgba(255,255,255,0.40)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Newspaper size={18} color="#ffffff" />
               </div>
               <div>
                 <div className="pc-brand-name">Payment Chronicle</div>

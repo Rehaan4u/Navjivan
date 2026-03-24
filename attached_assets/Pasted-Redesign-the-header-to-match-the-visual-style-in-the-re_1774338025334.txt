@@ -1,0 +1,64 @@
+Redesign the header to match the visual style in the reference screenshot.
+No new features, no logic changes — CSS/visual only.
+
+HEADER DESIGN:
+- Full-width hero-style header, min-height: 280px
+- Background gradient that starts rich blue at top and 
+  completely fades to white at the bottom:
+    background: linear-gradient(180deg, 
+      #1d4ed8 0%, 
+      #3b82f6 25%, 
+      #93c5fd 60%, 
+      #ffffff 100%
+    );
+- The bottom of the header blends seamlessly into the 
+  white page — no hard edge, no border, no shadow
+
+TOP ROW (navbar strip inside the header):
+- Logo left, nav center, user right — same as current
+- All text in this row: white
+- Active nav underline: white
+- Background of this row: transparent (header gradient shows through)
+
+SECOND ROW (welcome content, centered vertically in remaining space):
+- Left side:
+    "GOOD TO SEE YOU" — 11px, uppercase, letter-spacing 0.15em, 
+    color: rgba(255,255,255,0.75)
+    
+    "Welcome back, Rehaan" — Playfair Display, 32px, weight 700, 
+    color: white
+    
+    Subtitle — Inter 15px, color: rgba(255,255,255,0.7)
+
+- Right side (inline pills, NOT stacked blocks):
+    Two compact pill badges side by side:
+    
+    Pill 1: "● Active Subscription"
+      background: rgba(255,255,255,0.18)
+      border: 1px solid rgba(255,255,255,0.35)
+      backdrop-filter: blur(8px)
+      border-radius: 999px
+      padding: 8px 18px
+      color: white, font-size: 13px
+      Green dot before "Active": color #4ade80
+    
+    Pill 2: "🕐 9:00 AM IST daily"
+      Same style as Pill 1
+    
+    Gap between pills: 12px
+
+GLASSMORPHISM on pills only:
+  backdrop-filter: blur(10px)
+  background: rgba(255,255,255,0.15)
+  border: 1px solid rgba(255,255,255,0.3)
+
+FADE TRANSITION at bottom of header:
+  Add a ::after pseudo-element on the header:
+    position: absolute, bottom: 0, left: 0, right: 0
+    height: 60px
+    background: linear-gradient(to bottom, transparent, #ffffff)
+    pointer-events: none
+
+REMOVE: The old separate blue banner block entirely.
+KEEP: Everything below the header unchanged.
+Do not touch any JS logic or routing.
