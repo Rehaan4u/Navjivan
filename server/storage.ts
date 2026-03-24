@@ -14,7 +14,7 @@ import {
   type SchedulerRun,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, gte, lt, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -41,6 +41,7 @@ export interface IStorage {
   getUserNewsletters(userId: string): Promise<Newsletter[]>;
   getNewsletter(id: string): Promise<Newsletter | undefined>;
   getLastNewsletterBySubscription(subscriptionId: string): Promise<Newsletter | undefined>;
+  cleanupOldNewsletters(userId: string): Promise<void>;
 
   // Article operations
   createArticle(article: {
@@ -176,12 +177,42 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserNewsletters(userId: string): Promise<Newsletter[]> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return await db
       .select()
       .from(newsletters)
-      .where(eq(newsletters.userId, userId))
+      .where(and(
+        eq(newsletters.userId, userId),
+        gte(newsletters.generatedAt, thirtyDaysAgo),
+      ))
       .orderBy(desc(newsletters.generatedAt))
-      .limit(50); // Limit to last 50 newsletters
+      .limit(50);
+  }
+
+  async cleanupOldNewsletters(userId: string): Promise<void> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Delete newsletters older than 30 days
+    await db.delete(newsletters)
+      .where(and(
+        eq(newsletters.userId, userId),
+        lt(newsletters.generatedAt, thirtyDaysAgo),
+      ));
+
+    // Keep at most 50 records — delete everything beyond the 50th
+    const remaining = await db
+      .select({ id: newsletters.id })
+      .from(newsletters)
+      .where(eq(newsletters.userId, userId))
+      .orderBy(desc(newsletters.generatedAt));
+
+    if (remaining.length > 50) {
+      const toDelete = remaining.slice(50).map(n => n.id);
+      await db.delete(newsletters).where(inArray(newsletters.id, toDelete));
+      console.log(`   🗑️  Deleted ${toDelete.length} excess newsletter(s) for user ${userId}`);
+    }
   }
 
   async getNewsletter(id: string): Promise<Newsletter | undefined> {

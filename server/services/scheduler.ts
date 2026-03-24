@@ -116,6 +116,17 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 
     lastScheduledRun = startTime;
 
+    // Cleanup old newsletters after all subscriptions are processed
+    console.log(`\n🧹 Running newsletter cleanup...`);
+    const uniqueUserIds = [...new Set(subscriptionsToProcess.map(s => s.userId))];
+    for (const userId of uniqueUserIds) {
+      try {
+        await storage.cleanupOldNewsletters(userId);
+      } catch (error) {
+        console.error(`   ⚠️  Cleanup failed for user ${userId}:`, error);
+      }
+    }
+
   } catch (error) {
     console.error(`\n❌ FATAL ERROR:`, error);
     try {
