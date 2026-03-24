@@ -10,8 +10,10 @@ let lastScheduledRun: Date | null = null;
 async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
   const startTime = new Date();
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`📅 SCHEDULED NEWSLETTER GENERATION STARTED`);
-  console.log(`🕐 Time: ${startTime.toISOString()} (${startTime.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} IST)`);
+  console.log(`📅 NEWSLETTER GENERATION STARTED`);
+  console.log(
+    `🕐 Time: ${startTime.toISOString()} (${startTime.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })} IST)`,
+  );
   console.log(`📍 Trigger Source: ${triggerSource}`);
   console.log(`${"=".repeat(60)}\n`);
 
@@ -22,7 +24,6 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
     runDate,
     triggerSource,
   });
-
   const schedulerRunId = schedulerRun?.id ?? null;
   if (schedulerRunId) {
     console.log(`📊 Scheduler run ID: ${schedulerRunId}`);
@@ -33,7 +34,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
     console.log(`📊 Found ${subscriptions.length} active subscription(s)`);
 
     if (subscriptions.length === 0) {
-      console.log(`⚠️  No active subscriptions found - skipping newsletter generation`);
+      console.log(`⚠️  No active subscriptions found`);
       await storage.updateSchedulerRun(schedulerRunId, {
         completedAt: new Date(),
         status: "completed",
@@ -44,7 +45,11 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
       return;
     }
 
+    // Always process all subscriptions — no skip guard
     const subscriptionsToProcess = [...subscriptions];
+    console.log(
+      `\n✅ Processing all ${subscriptionsToProcess.length} subscription(s)`,
+    );
 
     let successCount = 0;
     let failureCount = 0;
@@ -56,24 +61,30 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
         console.log(`   User: ${user?.email || subscription.userId}`);
         console.log(`   Companies: ${subscription.companies}`);
 
-        const newsletter = await generateNewsletterForSubscription(subscription.id);
+        // Generate newsletter (returns existing if content unchanged)
+        const newsletter = await generateNewsletterForSubscription(
+          subscription.id,
+        );
 
         if (!newsletter) {
-          console.log(`   ❌ Newsletter generation failed`);
+          console.log(`   ❌ Newsletter generation returned null — skipping`);
           failureCount++;
           continue;
         }
 
-        console.log(`   ✅ Newsletter ${newsletter.id} generated`);
+        console.log(`   ✅ Newsletter ${newsletter.id} ready`);
 
+        // Generate PDF
         try {
           const pdfPath = await generateNewsletterPDF(newsletter.id);
           await storage.updateNewsletterPdf(newsletter.id, pdfPath);
           console.log(`   📄 PDF generated: ${pdfPath}`);
         } catch (error) {
           console.error(`   ⚠️  PDF generation failed:`, error);
+          // Continue to email even if PDF fails
         }
 
+        // Send email — always send regardless of whether content is new or reused
         if (user?.email) {
           try {
             await sendNewsletterEmail(newsletter.id, user.email);
@@ -84,24 +95,30 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
             failureCount++;
           }
         } else {
-          console.log(`   ⚠️  No email address found for user ${subscription.userId}`);
+          console.log(
+            `   ⚠️  No email address for user ${subscription.userId}`,
+          );
           failureCount++;
         }
       } catch (error) {
-        console.error(`   ❌ Error processing subscription ${subscription.id}:`, error);
+        console.error(
+          `   ❌ Error processing subscription ${subscription.id}:`,
+          error,
+        );
         failureCount++;
       }
     }
 
     const endTime = new Date();
-    const duration = ((endTime.getTime() - startTime.getTime()) / 1000).toFixed(2);
+    const duration = ((endTime.getTime() - startTime.getTime()) / 1000).toFixed(
+      2,
+    );
 
     console.log(`\n${"=".repeat(60)}`);
-    console.log(`📊 NEWSLETTER GENERATION SUMMARY`);
+    console.log(`📊 SUMMARY`);
     console.log(`   ✅ Successful: ${successCount}`);
     console.log(`   ❌ Failed: ${failureCount}`);
-    console.log(`   ⏱️  Duration: ${duration} seconds`);
-    console.log(`   🕐 Completed: ${endTime.toISOString()}`);
+    console.log(`   ⏱️  Duration: ${duration}s`);
     console.log(`${"=".repeat(60)}\n`);
 
     await storage.updateSchedulerRun(schedulerRunId, {
@@ -113,8 +130,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 
     lastScheduledRun = startTime;
   } catch (error) {
-    console.error(`\n❌ FATAL ERROR in scheduled newsletter generation:`, error);
-    console.error(`${"=".repeat(60)}\n`);
+    console.error(`\n❌ FATAL ERROR:`, error);
     try {
       await storage.updateSchedulerRun(schedulerRunId, {
         completedAt: new Date(),
@@ -124,7 +140,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
     } catch (updateError) {
-      console.error(`Failed to update scheduler run record:`, updateError);
+      console.error(`Failed to update scheduler run:`, updateError);
     }
   }
 }
@@ -136,17 +152,20 @@ export function startScheduler() {
   }
 
   const cronExpression = "30 3 * * *"; // 3:30 AM UTC = 9:00 AM IST
-
   cron.schedule(cronExpression, async () => {
     await runDailyNewsletterGeneration("cron");
   });
 
   schedulerRunning = true;
-  console.log("Newsletter scheduler started (runs daily at 9:00 AM IST)");
+  console.log("✅ Newsletter scheduler started (runs daily at 9:00 AM IST)");
 }
 
-export async function triggerNewsletterGeneration(triggerSource: string = "manual") {
-  console.log(`Triggering newsletter generation (source: ${triggerSource})...`);
+export async function triggerNewsletterGeneration(
+  triggerSource: string = "manual",
+) {
+  console.log(
+    `\n🚀 Newsletter generation triggered (source: ${triggerSource})`,
+  );
   await runDailyNewsletterGeneration(triggerSource);
   return { success: true, message: "Newsletter generation completed" };
 }
