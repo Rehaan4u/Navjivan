@@ -22,6 +22,8 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<"home" | "archive">("home");
   const preferencesRef = useRef<HTMLDivElement>(null);
+  const globeCanvasRef = useRef<HTMLCanvasElement>(null);
+  const particleCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [companySearch, setCompanySearch] = useState("");
@@ -44,6 +46,205 @@ export default function Dashboard() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ── Globe + Particle animation ──
+  useEffect(() => {
+    const gCanvas = globeCanvasRef.current;
+    const pCanvas = particleCanvasRef.current;
+    if (!gCanvas || !pCanvas) return;
+    const gCtx = gCanvas.getContext('2d');
+    const pCtx = pCanvas.getContext('2d');
+    if (!gCtx || !pCtx) return;
+
+    // Globe canvas size
+    const isMobile = window.innerWidth < 640;
+    const S = isMobile ? 280 : 480;
+    gCanvas.width = S;
+    gCanvas.height = S;
+    const cx = S / 2, cy = S / 2;
+    const R = S * 0.38;
+
+    // Particle canvas matches header
+    const syncParticleSize = () => {
+      const rect = pCanvas.parentElement?.getBoundingClientRect();
+      if (rect) { pCanvas.width = rect.width; pCanvas.height = rect.height; }
+    };
+    syncParticleSize();
+
+    // Build particle field
+    type Particle = { x: number; y: number; size: number; opacity: number; speed: number; phase: number; phaseSpeed: number };
+    const buildParticles = (): Particle[] => Array.from({ length: 80 }, () => ({
+      x: Math.random() * pCanvas.width,
+      y: Math.random() * pCanvas.height,
+      size: Math.random() + 0.5,
+      opacity: Math.random() * 0.4 + 0.3,
+      speed: Math.random() * 0.3 + 0.1,
+      phase: Math.random() * Math.PI * 2,
+      phaseSpeed: Math.random() * 0.02 + 0.005,
+    }));
+    let particles = buildParticles();
+
+    // Orbital rings: tilt angle (radians), pulse angle, speed
+    const rings = [
+      { tilt: 0,                    pulse: 0,              speed: 0.008 },
+      { tilt: 35 * Math.PI / 180,   pulse: Math.PI * 0.7,  speed: 0.006 },
+      { tilt: 70 * Math.PI / 180,   pulse: Math.PI * 1.4,  speed: 0.010 },
+    ];
+
+    // Sparks
+    type Spark = { x: number; y: number; t0: number };
+    const sparks: Spark[] = [];
+    let lastSpark = 0;
+    let rotation = 0;
+
+    const drawGlobe = (t: number) => {
+      gCtx.clearRect(0, 0, S, S);
+
+      // Atmosphere glow (draw first so sphere covers it)
+      gCtx.save();
+      gCtx.shadowBlur = 40;
+      gCtx.shadowColor = 'rgba(30,100,255,0.4)';
+      gCtx.strokeStyle = 'rgba(30,100,255,0.3)';
+      gCtx.lineWidth = 2;
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, R + 10, 0, Math.PI * 2);
+      gCtx.stroke();
+      gCtx.shadowBlur = 0;
+      gCtx.restore();
+
+      // Base sphere
+      const sg = gCtx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx, cy, R);
+      sg.addColorStop(0, 'rgba(20,80,180,0.9)');
+      sg.addColorStop(1, 'rgba(5,20,80,0.95)');
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, R, 0, Math.PI * 2);
+      gCtx.fillStyle = sg;
+      gCtx.fill();
+
+      // Clip to sphere for lat/lon lines
+      gCtx.save();
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, R, 0, Math.PI * 2);
+      gCtx.clip();
+      gCtx.strokeStyle = 'rgba(80,160,255,0.25)';
+      gCtx.lineWidth = 0.8;
+
+      // Longitude lines
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 + rotation;
+        const rx = Math.abs(Math.cos(a)) * R;
+        if (rx < 1) continue;
+        gCtx.beginPath();
+        gCtx.ellipse(cx, cy, rx, R, 0, 0, Math.PI * 2);
+        gCtx.stroke();
+      }
+
+      // Latitude lines
+      for (let j = 1; j < 8; j++) {
+        const phi = (j / 8) * Math.PI;
+        const ly = cy + Math.cos(phi) * R;
+        const lr = Math.sin(phi) * R;
+        gCtx.beginPath();
+        gCtx.ellipse(cx, ly, lr, lr * 0.15, 0, 0, Math.PI * 2);
+        gCtx.stroke();
+      }
+      gCtx.restore();
+
+      // Orbital rings + signal pulses
+      rings.forEach((ring) => {
+        gCtx.save();
+        gCtx.translate(cx, cy);
+        gCtx.rotate(ring.tilt);
+        const rOuter = R * 1.35;
+        const rInner = rOuter * 0.25;
+
+        gCtx.strokeStyle = 'rgba(100,200,255,0.15)';
+        gCtx.lineWidth = 1.5;
+        gCtx.beginPath();
+        gCtx.ellipse(0, 0, rOuter, rInner, 0, 0, Math.PI * 2);
+        gCtx.stroke();
+
+        // Trailing tail + pulse head
+        const TAIL = 8;
+        for (let ti = TAIL; ti >= 0; ti--) {
+          const a = ring.pulse - ti * 0.07;
+          const px = Math.cos(a) * rOuter;
+          const py = Math.sin(a) * rInner;
+          const isHead = ti === 0;
+          const opacity = isHead ? 1 : ((TAIL - ti) / TAIL) * 0.8;
+          const size = isHead ? 4 : Math.max(0.5, 3 - (ti / TAIL) * 2.5);
+          if (isHead) { gCtx.shadowBlur = 20; gCtx.shadowColor = '#00d4ff'; }
+          gCtx.beginPath();
+          gCtx.arc(px, py, size, 0, Math.PI * 2);
+          gCtx.fillStyle = `rgba(0,212,255,${opacity})`;
+          gCtx.fill();
+          if (isHead) { gCtx.shadowBlur = 0; gCtx.shadowColor = 'transparent'; }
+        }
+        gCtx.restore();
+      });
+
+      // Sparks
+      sparks.forEach((spark, idx) => {
+        const age = t - spark.t0;
+        const dur = 600;
+        if (age > dur) { sparks.splice(idx, 1); return; }
+        const prog = age / dur;
+        const sr = prog * 30;
+        const so = 1 - prog;
+        gCtx.save();
+        gCtx.globalAlpha = so;
+        gCtx.strokeStyle = 'rgba(255,220,100,0.8)';
+        gCtx.lineWidth = 1.5;
+        gCtx.shadowBlur = 10;
+        gCtx.shadowColor = 'rgba(255,220,100,0.8)';
+        gCtx.beginPath();
+        gCtx.arc(cx + spark.x, cy + spark.y, sr, 0, Math.PI * 2);
+        gCtx.stroke();
+        gCtx.shadowBlur = 0;
+        gCtx.restore();
+      });
+    };
+
+    const drawParticles = (t: number) => {
+      pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+      particles.forEach(p => {
+        p.y -= p.speed;
+        p.phase += p.phaseSpeed;
+        if (p.y < -2) p.y = pCanvas.height + 2;
+        const twinkle = 0.5 + 0.5 * Math.sin(p.phase);
+        const op = p.opacity * (0.6 + 0.4 * twinkle);
+        pCtx.beginPath();
+        pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        pCtx.fillStyle = `rgba(255,255,255,${op})`;
+        pCtx.fill();
+      });
+    };
+
+    let animId: number;
+    const animate = (t: number) => {
+      rotation += 0.003;
+      rings.forEach(r => { r.pulse += r.speed; });
+
+      // Random spark every 2-3s
+      if (t - lastSpark > 2000 + Math.random() * 1000) {
+        const rIdx = Math.floor(Math.random() * 3);
+        const sAngle = Math.random() * Math.PI * 2;
+        const rOuter = R * 1.35;
+        const rInner = rOuter * 0.25;
+        const sx = Math.cos(sAngle) * rOuter - cx;
+        const sy = Math.sin(sAngle + rings[rIdx].tilt) * rInner - cy;
+        sparks.push({ x: sx, y: sy, t0: t });
+        lastSpark = t;
+      }
+
+      drawParticles(t);
+      drawGlobe(t);
+      animId = requestAnimationFrame(animate);
+    };
+
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
   }, []);
 
   const { data: subscription } = useQuery<Subscription | null>({
@@ -148,7 +349,25 @@ export default function Dashboard() {
 
       {/* ── Header ── */}
       <header className="pc-header">
-        <div className="pc-header-inner">
+        {/* Particle field background */}
+        <canvas
+          ref={particleCanvasRef}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+        />
+        {/* 3D Globe */}
+        <canvas
+          ref={globeCanvasRef}
+          style={{
+            position: "absolute",
+            right: "5%",
+            top: "50%",
+            transform: "translateY(-50%)",
+            pointerEvents: "none",
+            zIndex: 1,
+            opacity: 0.92,
+          }}
+        />
+        <div className="pc-header-inner" style={{ position: "relative", zIndex: 2 }}>
 
           {/* Row 1: 2-row stacked navbar */}
           <div className="pc-header-row1">

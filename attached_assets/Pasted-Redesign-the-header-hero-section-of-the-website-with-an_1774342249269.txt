@@ -1,0 +1,156 @@
+Redesign the header/hero section of the website with an animated 
+3D globe with electrical ring signals. No backend changes. CSS + JS only.
+
+=============================================================
+COLOR THEME — REPLACE HEADER GRADIENT
+=============================================================
+
+Header background:
+  background: linear-gradient(135deg,
+    #0a0f2e 0%,      /* deep navy left */
+    #0d1b5e 25%,     /* royal blue */
+    #1a3a8f 50%,     /* mid blue center */
+    #c47d0e 80%,     /* amber/gold bleeding in from right */
+    #e8920a 100%     /* warm golden orange far right */
+  );
+
+This creates the exact navy-to-amber gradient seen in reference.
+Apply to the full header/hero container.
+
+=============================================================
+ANIMATED 3D GLOBE — BUILD WITH CSS + JS CANVAS
+=============================================================
+
+Add a <canvas id="globeCanvas"> element positioned on the 
+RIGHT side of the header (absolute positioned, right: 5%, 
+top: 50%, transform: translateY(-50%)).
+Canvas size: 480px x 480px on desktop, 280px on mobile.
+
+Draw and animate using vanilla JS requestAnimationFrame:
+
+GLOBE CORE:
+  - Draw a sphere using layered arcs and latitude/longitude lines
+  - Base sphere: radial gradient fill
+      center color: rgba(20, 80, 180, 0.9)
+      edge color: rgba(5, 20, 80, 0.95)
+  - Draw ~12 longitude lines (vertical arcs) rotating slowly
+  - Draw ~8 latitude lines (horizontal ellipses)
+  - Line color: rgba(80, 160, 255, 0.25)
+  - Line width: 0.8px
+  - Globe slowly auto-rotates: longitude lines shift 
+    by += 0.003 radians per frame (smooth, endless)
+
+ELECTRICAL RING SIGNALS — THE KEY EFFECT:
+  Create 3 orbital rings around the globe at different angles:
+  
+  Ring 1: equatorial (flat, horizontal ellipse around middle)
+  Ring 2: tilted 35 degrees (diagonal orbit)  
+  Ring 3: tilted 70 degrees (near-vertical orbit)
+
+  Each ring:
+    - Draw as a thin ellipse stroke
+    - Color: rgba(100, 200, 255, 0.15) base
+    - Width: 1.5px
+
+  On each ring, animate a glowing "signal pulse" — 
+  a bright dot that travels along the ring path:
+  
+  Signal dot:
+    - Small circle radius: 4px
+    - Color: #00d4ff (electric cyan)
+    - Glow effect using shadowBlur: 20, shadowColor: #00d4ff
+    - Each ring's pulse travels at different speed:
+        Ring 1: 0.008 rad/frame
+        Ring 2: 0.006 rad/frame  
+        Ring 3: 0.010 rad/frame
+    - Add a trailing "tail" behind each pulse:
+        Draw 8 smaller dots behind it, each decreasing in 
+        opacity and size (opacity: 0.8 → 0.05, size: 3px → 0.5px)
+        This creates the electrical signal streak effect
+
+  Additionally, add random spark events every 2-3 seconds:
+    - A bright flash appears at a random point on a ring
+    - Expands outward as a circle (radius 0 → 30px, opacity 1 → 0)
+    - Color: rgba(255, 220, 100, 0.8) — golden spark
+    - Duration: 600ms, CSS animation via JS-added class
+
+GLOBE ATMOSPHERE GLOW:
+  After drawing the globe, draw a large circle slightly bigger 
+  than the globe radius:
+    - No fill
+    - Stroke: radial gradient from rgba(30,100,255,0.3) to transparent
+    - shadowBlur: 40, shadowColor: rgba(30,100,255,0.4)
+  This creates the atmospheric halo seen in the reference.
+
+PARTICLE FIELD (background of header):
+  Scatter 80 tiny dots across the header canvas background:
+    - Size: 1-2px random
+    - Color: rgba(255,255,255, 0.3-0.7) random opacity
+    - Slowly drift upward: y -= 0.2 per frame, wrap around
+    - Some particles randomly twinkle (opacity pulse)
+  This replicates the star/particle field in the reference.
+
+=============================================================
+HEADER CONTENT (LEFT SIDE)
+=============================================================
+
+Keep existing content but restyle:
+
+"GOOD TO SEE YOU" eyebrow:
+  color: rgba(232, 146, 10, 0.85)  ← amber, matches right gradient
+  font-size: 13px, uppercase, letter-spacing: 0.2em
+
+"Welcome back, Rehaan":
+  font: Cormorant Garamond, 58px, weight 700
+  color: #ffffff
+  text-shadow: 0 0 40px rgba(30, 100, 255, 0.4)
+
+Subtitle:
+  color: rgba(180, 210, 255, 0.8)
+  font: DM Sans, 16px, weight 300
+
+Pills (Subscription Active + Next Delivery):
+  background: rgba(255,255,255,0.08)
+  border: 1px solid rgba(232, 146, 10, 0.4)  ← amber border
+  color: #ffffff
+  backdrop-filter: blur(10px)
+  Active dot: #00d4ff (electric cyan — matches globe signals)
+  Delivery dot: rgba(232, 146, 10, 0.9) (amber)
+
+=============================================================
+NAVBAR TOP ROW
+=============================================================
+
+Background: rgba(8, 14, 40, 0.85)
+backdrop-filter: blur(20px)
+Bottom border: 1px solid rgba(232, 146, 10, 0.2)  ← subtle amber line
+
+"Payment Chronicle": color: #ffffff, 36px
+"BY GAJANAN PUJARI": color: rgba(232, 146, 10, 0.7)  ← amber
+
+Nav links: rgba(200, 220, 255, 0.85)
+Active link underline: #e8920a  ← amber, matches Opus style
+"Rehaan": #ffffff, weight 600
+"Log out": #e8920a, hover: brightness(1.3)
+
+=============================================================
+HEADER BOTTOM FADE
+=============================================================
+
+::after on header:
+  background: linear-gradient(to bottom, 
+    transparent 0%, 
+    rgba(240, 245, 255, 0.15) 80%,
+    #f0f5ff 100%
+  )
+  height: 80px
+
+=============================================================
+DO NOT TOUCH
+=============================================================
+
+No routing, no API, no auth logic changes.
+No new features or sections.
+Preserve all class names and IDs used by existing JS.
+Globe canvas must not block any clickable elements 
+(pointer-events: none on canvas).
