@@ -150,11 +150,11 @@ export default function Dashboard() {
       <header className="pc-header">
         <div className="pc-header-inner">
 
-          {/* Row 1: Logo | Nav | User */}
+          {/* Row 1: Centered Logo + Brand | Nav + User on Right */}
           <div className="pc-header-row1">
 
-            {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            {/* Centered Logo + Brand */}
+            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
               <div style={{ width: 36, height: 36, background: "rgba(255,255,255,0.20)", border: "1px solid rgba(255,255,255,0.40)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Newspaper size={18} color="#ffffff" />
               </div>
@@ -164,42 +164,47 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Nav */}
-            <nav className="hidden sm:flex" style={{ alignItems: "center", gap: 0 }}>
-              <button
-                className={`pc-nav-btn${activeView === "home" ? " active" : ""}`}
-                onClick={() => setActiveView("home")}
-                data-testid="nav-home"
-              >Home</button>
-              <button
-                className={`pc-nav-btn${activeView === "archive" ? " active" : ""}`}
-                onClick={() => setActiveView("archive")}
-                data-testid="nav-archive"
-              >
-                Newsletter Archive
-                {newsletters.length > 0 && (
-                  <span className="pc-nav-badge">{newsletters.length}</span>
-                )}
-              </button>
-            </nav>
+            {/* Right Section: Nav + User */}
+            <div style={{ display: "flex", alignItems: "center", gap: 0, marginLeft: "auto" }}>
+              {/* Nav */}
+              <nav className="hidden sm:flex" style={{ alignItems: "center", gap: 0 }}>
+                <button
+                  className={`pc-nav-btn${activeView === "home" ? " active" : ""}`}
+                  onClick={() => setActiveView("home")}
+                  data-testid="nav-home"
+                >Home</button>
+                <button
+                  className={`pc-nav-btn${activeView === "archive" ? " active" : ""}`}
+                  onClick={() => setActiveView("archive")}
+                  data-testid="nav-archive"
+                >
+                  Newsletter Archive
+                  {newsletters.length > 0 && (
+                    <span className="pc-nav-badge">{newsletters.length}</span>
+                  )}
+                </button>
+              </nav>
 
-            {/* User */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-              <div className="hidden md:flex" style={{ alignItems: "center", gap: 10 }}>
-                {user?.profileImageUrl ? (
-                  <img src={user.profileImageUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--pc-gold-border)" }} />
-                ) : (
-                  <div className="pc-avatar-ring"><User size={15} color="var(--pc-gold)" /></div>
-                )}
-                <span className="pc-user-name" data-testid="text-username">
-                  {user?.firstName || user?.email?.split('@')[0]}
-                </span>
-              </div>
+              {/* Divider */}
               <div className="pc-separator hidden md:block" />
-              <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout">
-                <LogOut size={14} />
-                <span className="hidden sm:inline">Log out</span>
-              </button>
+
+              {/* User */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                <div className="hidden md:flex" style={{ alignItems: "center", gap: 10 }}>
+                  {user?.profileImageUrl ? (
+                    <img src={user.profileImageUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--pc-gold-border)" }} />
+                  ) : (
+                    <div className="pc-avatar-ring"><User size={15} color="var(--pc-gold)" /></div>
+                  )}
+                  <span className="pc-user-name" data-testid="text-username">
+                    {user?.firstName || user?.email?.split('@')[0]}
+                  </span>
+                </div>
+                <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout">
+                  <LogOut size={14} />
+                  <span className="hidden sm:inline">Log out</span>
+                </button>
+              </div>
             </div>
           </div>
 

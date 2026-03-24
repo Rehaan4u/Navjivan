@@ -390,13 +390,14 @@
   z-index: 2; /* above the ::after fade */
 }
 
-/* Row 1: logo | nav | user */
+/* Row 1: centered logo | nav + user on right */
 .pc-header-row1 {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   height: 64px;
   gap: 16px;
+  position: relative;
 }
 
 /* Row 2: welcome copy + pills */
@@ -481,8 +482,8 @@
 
 .pc-brand-name {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   color: #e8f1ff;
   letter-spacing: -0.01em;
   line-height: 1.1;
@@ -490,7 +491,7 @@
 
 .pc-brand-sub {
   font-family: 'DM Sans', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.15em;
   text-transform: uppercase;
