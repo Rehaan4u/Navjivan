@@ -1,0 +1,89 @@
+Refine the existing header and typography. No new features, CSS only.
+
+FONT CHANGE — replace all current fonts with:
+  Headlines (Welcome back): 'Cormorant Garamond', serif — elegant, 
+  tall, editorial. Load from Google Fonts.
+  
+  Body/UI text: 'DM Sans', sans-serif — clean, modern, friendly.
+  Load from Google Fonts.
+
+  Add to <head>:
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+HEADER — make it taller and richer:
+  min-height: 340px (increase from current)
+  
+  Background — richer, deeper gradient:
+    background: linear-gradient(175deg,
+      #0f3460 0%,
+      #1a56db 30%,
+      #4f94ef 65%,
+      #c7deff 85%,
+      #eef4ff 100%
+    );
+  
+  The bottom should feel like sky fading into a soft 
+  powder blue — NOT harsh white.
+
+TEXT COLORS INSIDE HEADER — nothing white or black:
+  "GOOD TO SEE YOU" eyebrow:
+    color: rgba(199, 222, 255, 0.8)  ← soft powder blue
+    font: DM Sans, 11px, uppercase, letter-spacing 0.2em
+
+  "Welcome back, Rehaan":
+    font: Cormorant Garamond, 48px, weight 600
+    color: #e8f1ff  ← very light ice blue, NOT white
+    text-shadow: 0 2px 20px rgba(15, 52, 96, 0.3)
+
+  Subtitle:
+    font: DM Sans, 15px, weight 300
+    color: rgba(199, 222, 255, 0.75)  ← muted powder blue
+    letter-spacing: 0.01em
+
+PILLS (Subscription + Delivery):
+  background: rgba(255, 255, 255, 0.12)
+  border: 1px solid rgba(199, 222, 255, 0.4)
+  backdrop-filter: blur(12px)
+  color: #c7deff  ← powder blue text NOT white
+  font: DM Sans 13px, weight 500
+  border-radius: 999px
+  padding: 8px 20px
+  
+  Active dot: #6ee7b7 (soft mint green)
+  Delivery dot: #93c5fd (light blue)
+
+NAVBAR text (top row):
+  Logo "Payment Chronicle": color #e8f1ff, Cormorant Garamond
+  "BY GAJANAN PUJARI": color rgba(199,222,255,0.6)
+  Nav links: color rgba(199,222,255,0.85)
+  Active link underline: #93c5fd
+  "Rehaan" + "Log out": color rgba(199,222,255,0.8)
+  Separator line: rgba(199,222,255,0.2)
+
+PAGE BACKGROUND below header:
+  background: linear-gradient(180deg, #eef4ff 0%, #f5f8ff 100%)
+  (soft powder blue-white, not stark white)
+
+CARDS below header:
+  background: rgba(255,255,255,0.75)
+  backdrop-filter: blur(16px)
+  border: 1px solid rgba(147,197,253,0.25)
+  box-shadow: 0 4px 24px rgba(29,78,216,0.06)
+  
+  Card titles: #1e3a5f (deep navy, not black)
+  Card descriptions: #5b7fa6 (muted steel blue, not grey)
+  
+  Icon backgrounds: rgba(29,78,216,0.08)
+  Icon colors: #1d4ed8
+
+  "Update Preferences" button:
+    background: #1a56db
+    color: #e8f1ff
+  
+  "Generate Newsletter" icon bg: #1a56db
+  Other icon bg: rgba(29,78,216,0.1), icon color: #1d4ed8
+
+  Action item titles: #1e3a5f
+  Action item subtitles: #5b7fa6
+
+Do not change any logic, routing, or functionality.
