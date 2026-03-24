@@ -390,14 +390,41 @@
   z-index: 2; /* above the ::after fade */
 }
 
-/* Row 1: centered logo | nav + user on right */
+/* Row 1: 3-column grid layout - left empty | center brand | right nav+user */
 .pc-header-row1 {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 80px;
+  padding: 0 40px;
+  gap: 0;
+  position: relative;
+}
+
+/* Left column - empty */
+.pc-header-row1 > :nth-child(1) {
+  grid-column: 1;
+  justify-self: start;
+}
+
+/* Center column - centered brand */
+.pc-header-row1 > :nth-child(2) {
+  grid-column: 2;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* Right column - nav + user */
+.pc-header-row1 > :nth-child(3) {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  height: 64px;
-  gap: 16px;
-  position: relative;
+  gap: 28px;
 }
 
 /* Row 2: welcome copy + pills */
@@ -412,7 +439,7 @@
 
 .pc-header-eyebrow {
   font-family: 'DM Sans', sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -422,7 +449,7 @@
 
 .pc-header-welcome-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 48px;
+  font-size: 58px;
   font-weight: 600;
   color: #e8f1ff;
   line-height: 1.2;
@@ -432,7 +459,7 @@
 
 .pc-header-welcome-sub {
   font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 300;
   color: rgba(199, 222, 255, 0.75);
   line-height: 1.5;
@@ -456,7 +483,7 @@
   border-radius: 999px;
   padding: 8px 20px;
   font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   color: #c7deff;
   white-space: nowrap;
@@ -482,27 +509,31 @@
 
 .pc-brand-name {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 700;
   color: #e8f1ff;
   letter-spacing: -0.01em;
   line-height: 1.1;
+  margin: 0;
+  padding: 0;
 }
 
 .pc-brand-sub {
   font-family: 'DM Sans', sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(199, 222, 255, 0.6);
   line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .pc-nav-btn {
-  padding: 20px 16px;
+  padding: 12px 0;
   font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   color: rgba(199, 222, 255, 0.85);
   background: transparent;
@@ -511,10 +542,10 @@
   cursor: pointer;
   transition: color 0.2s ease, border-color 0.2s ease;
   white-space: nowrap;
-  height: 64px;
   display: flex;
   align-items: center;
   gap: 8px;
+  height: auto;
 }
 
 .pc-nav-btn:hover { color: rgba(199, 222, 255, 1); }
@@ -529,7 +560,7 @@
   color: #ffffff;
   border-radius: 999px;
   padding: 2px 7px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -548,7 +579,7 @@
 
 .pc-user-name {
   font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: rgba(199, 222, 255, 0.8);
 }
@@ -565,7 +596,7 @@
   align-items: center;
   gap: 6px;
   font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   color: rgba(199, 222, 255, 0.8);
   background: transparent;
@@ -748,14 +779,14 @@
 
 .pc-section-title {
   font-family: 'DM Sans', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #1e3a5f;
 }
 
 .pc-section-desc {
   font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   color: #5b7fa6;
   margin-top: 2px;
 }
@@ -955,14 +986,14 @@
 
 .pc-action-title {
   font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: #1e3a5f;
 }
 
 .pc-action-desc {
   font-family: 'DM Sans', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   color: #5b7fa6;
   margin-top: 2px;
 }

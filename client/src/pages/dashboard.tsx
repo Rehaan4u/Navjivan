@@ -150,11 +150,14 @@ export default function Dashboard() {
       <header className="pc-header">
         <div className="pc-header-inner">
 
-          {/* Row 1: Centered Logo + Brand | Nav + User on Right */}
+          {/* Row 1: 3-column grid - left empty | center brand | right nav+user */}
           <div className="pc-header-row1">
 
-            {/* Centered Logo + Brand */}
-            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            {/* Left empty column */}
+            <div></div>
+
+            {/* Center column: Centered Logo + Brand */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0, justifyContent: "center" }}>
               <div style={{ width: 36, height: 36, background: "rgba(255,255,255,0.20)", border: "1px solid rgba(255,255,255,0.40)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Newspaper size={18} color="#ffffff" />
               </div>
@@ -164,8 +167,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Right Section: Nav + User */}
-            <div style={{ display: "flex", alignItems: "center", gap: 0, marginLeft: "auto" }}>
+            {/* Right column: Nav + User */}
+            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
               {/* Nav */}
               <nav className="hidden sm:flex" style={{ alignItems: "center", gap: 0 }}>
                 <button
