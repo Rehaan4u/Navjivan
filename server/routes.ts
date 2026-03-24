@@ -158,17 +158,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Manual trigger endpoint (authenticated - for dashboard use)
   app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res) => {
-    try {
-      console.log("Manual newsletter generation triggered by user");
-      const results = await triggerNewsletterGeneration("manual");
-      res.json({
-        message: "Newsletter generation triggered",
-        results,
-      });
-    } catch (error) {
-      console.error("Error triggering newsletters:", error);
-      res.status(500).json({ message: "Failed to trigger newsletter generation" });
-    }
+    console.log("Manual newsletter generation triggered by user");
+    // Return immediately — do not await
+    res.json({ message: "Newsletter generation started", status: "processing" });
+    // Run in background
+    triggerNewsletterGeneration("manual").catch(error => {
+      console.error("Background newsletter generation failed:", error);
+    });
   });
 
   // Cron trigger endpoint (for external cron services like Replit Cron)
