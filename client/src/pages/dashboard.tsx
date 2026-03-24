@@ -7,7 +7,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Subscription, Newsletter, Article } from "@shared/schema";
 import {
   X, Zap, Settings, FileText, ChevronDown, ChevronUp,
-  Download, Clock, CheckCircle2, Building2, Newspaper,
+  Download, CheckCircle2, Building2, Newspaper,
   LogOut, User, Send
 } from "lucide-react";
 
@@ -150,54 +150,82 @@ export default function Dashboard() {
       <header className="pc-header">
         <div className="pc-header-inner">
 
-          {/* Logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            <div style={{ width: 36, height: 36, background: "var(--pc-gold-soft)", border: "1px solid var(--pc-gold-border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Newspaper size={18} color="var(--pc-gold)" />
+          {/* Row 1: Logo | Nav | User */}
+          <div className="pc-header-row1">
+
+            {/* Logo */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, background: "var(--pc-gold-soft)", border: "1px solid var(--pc-gold-border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Newspaper size={18} color="var(--pc-gold)" />
+              </div>
+              <div>
+                <div className="pc-brand-name">Payment Chronicle</div>
+                <div className="pc-brand-sub">by Gajanan Pujari</div>
+              </div>
             </div>
+
+            {/* Nav */}
+            <nav className="hidden sm:flex" style={{ alignItems: "center", gap: 0 }}>
+              <button
+                className={`pc-nav-btn${activeView === "home" ? " active" : ""}`}
+                onClick={() => setActiveView("home")}
+                data-testid="nav-home"
+              >Home</button>
+              <button
+                className={`pc-nav-btn${activeView === "archive" ? " active" : ""}`}
+                onClick={() => setActiveView("archive")}
+                data-testid="nav-archive"
+              >
+                Newsletter Archive
+                {newsletters.length > 0 && (
+                  <span className="pc-nav-badge">{newsletters.length}</span>
+                )}
+              </button>
+            </nav>
+
+            {/* User */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+              <div className="hidden md:flex" style={{ alignItems: "center", gap: 10 }}>
+                {user?.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--pc-gold-border)" }} />
+                ) : (
+                  <div className="pc-avatar-ring"><User size={15} color="var(--pc-gold)" /></div>
+                )}
+                <span className="pc-user-name" data-testid="text-username">
+                  {user?.firstName || user?.email?.split('@')[0]}
+                </span>
+              </div>
+              <div className="pc-separator hidden md:block" />
+              <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout">
+                <LogOut size={14} />
+                <span className="hidden sm:inline">Log out</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: Welcome copy + Status pills */}
+          <div className="pc-header-row2">
             <div>
-              <div className="pc-brand-name">Payment Chronicle</div>
-              <div className="pc-brand-sub">by Gajanan Pujari</div>
+              <div className="pc-header-eyebrow">Good to see you</div>
+              <div className="pc-header-welcome-title">
+                Welcome back, {user?.firstName || user?.email?.split('@')[0] || 'there'}
+              </div>
+              <div className="pc-header-welcome-sub">
+                Your personalised payments industry briefing, powered by AI.
+              </div>
+            </div>
+            <div className="pc-header-pills">
+              <div className="pc-header-pill">
+                <span className="pc-header-pill-dot" />
+                {subscription ? "Subscription Active" : "Not subscribed"}
+              </div>
+              <div className="pc-header-pill">
+                <span className="pc-header-pill-dot-blue" />
+                Next delivery: 9:00 AM IST
+              </div>
             </div>
           </div>
 
-          {/* Nav */}
-          <nav className="hidden sm:flex" style={{ alignItems: "center", gap: 0 }}>
-            <button
-              className={`pc-nav-btn${activeView === "home" ? " active" : ""}`}
-              onClick={() => setActiveView("home")}
-              data-testid="nav-home"
-            >Home</button>
-            <button
-              className={`pc-nav-btn${activeView === "archive" ? " active" : ""}`}
-              onClick={() => setActiveView("archive")}
-              data-testid="nav-archive"
-            >
-              Newsletter Archive
-              {newsletters.length > 0 && (
-                <span className="pc-nav-badge">{newsletters.length}</span>
-              )}
-            </button>
-          </nav>
-
-          {/* User */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            <div className="hidden md:flex" style={{ alignItems: "center", gap: 10 }}>
-              {user?.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--pc-gold-border)" }} />
-              ) : (
-                <div className="pc-avatar-ring"><User size={15} color="var(--pc-gold)" /></div>
-              )}
-              <span className="pc-user-name" data-testid="text-username">
-                {user?.firstName || user?.email?.split('@')[0]}
-              </span>
-            </div>
-            <div className="pc-separator hidden md:block" />
-            <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout">
-              <LogOut size={14} />
-              <span className="hidden sm:inline">Log out</span>
-            </button>
-          </div>
         </div>
       </header>
 
@@ -213,40 +241,8 @@ export default function Dashboard() {
         {activeView === "home" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-            {/* Welcome Banner */}
-            <div className="pc-banner animate-float" style={{ animationDelay: "0ms" }}>
-              <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-                <div>
-                  <div className="pc-banner-eyebrow">Good to see you</div>
-                  <div className="pc-banner-title">
-                    Welcome back, {user?.firstName || user?.email?.split('@')[0] || 'there'}
-                  </div>
-                  <div className="pc-banner-sub">Your personalised payments industry briefing, powered by AI.</div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div className="pc-banner-stat">
-                    <div className="pc-banner-stat-icon"><CheckCircle2 size={18} /></div>
-                    <div>
-                      <div className="pc-stat-label">Subscription</div>
-                      {subscription
-                        ? <div className="pc-stat-value"><span className="pc-active-badge">Active</span></div>
-                        : <div className="pc-stat-value" style={{ color: "var(--pc-text-muted)" }}>Not set up</div>
-                      }
-                    </div>
-                  </div>
-                  <div className="pc-banner-stat">
-                    <div className="pc-banner-stat-icon"><Clock size={18} /></div>
-                    <div>
-                      <div className="pc-stat-label">Next delivery</div>
-                      <div className="pc-stat-value">9:00 AM IST daily</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Grid */}
-            <div className="animate-float" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24, animationDelay: "80ms" }} >
+            <div className="animate-float" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24, animationDelay: "0ms" }} >
               <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 24 }} className="grid-responsive">
 
                 {/* Company Preferences */}

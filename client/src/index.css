@@ -352,14 +352,14 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid var(--pc-border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  height: 64px;
+  background: linear-gradient(160deg, #ffffff 0%, #eff6ff 60%, #dbeafe 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(29, 78, 216, 0.10);
+  box-shadow: 0 2px 20px rgba(29, 78, 216, 0.06);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .pc-header-inner {
@@ -368,9 +368,88 @@
   margin: 0 auto;
   padding: 0 24px;
   display: flex;
+  flex-direction: column;
+}
+
+/* Row 1: logo | nav | user */
+.pc-header-row1 {
+  display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 64px;
   gap: 16px;
+}
+
+/* Row 2: welcome copy + pills */
+.pc-header-row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 16px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pc-header-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #93a8c6;
+  margin-bottom: 4px;
+}
+
+.pc-header-welcome-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #1e3a8a;
+  line-height: 1.2;
+  margin-bottom: 3px;
+}
+
+.pc-header-welcome-sub {
+  font-size: 13px;
+  color: var(--pc-text-muted);
+  line-height: 1.5;
+}
+
+.pc-header-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.pc-header-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(29, 78, 216, 0.07);
+  border: 1px solid rgba(29, 78, 216, 0.15);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+.pc-header-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+}
+
+.pc-header-pill-dot-blue {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+  flex-shrink: 0;
 }
 
 .pc-brand-name {
