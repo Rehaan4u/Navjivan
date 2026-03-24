@@ -3,9 +3,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Subscription, Newsletter, Article } from "@shared/schema";
 import {
@@ -15,8 +12,8 @@ import {
 } from "lucide-react";
 
 const VALID_COMPANIES = [
-  { name: "Visa", logo: "https://logo.clearbit.com/visa.com" },
-  { name: "PayPal", logo: "https://logo.clearbit.com/paypal.com" },
+  { name: "Visa",     logo: "https://logo.clearbit.com/visa.com" },
+  { name: "PayPal",   logo: "https://logo.clearbit.com/paypal.com" },
   { name: "Discover", logo: "https://logo.clearbit.com/discover.com" },
 ] as const;
 
@@ -26,7 +23,6 @@ export default function Dashboard() {
   const [activeView, setActiveView] = useState<"home" | "archive">("home");
   const preferencesRef = useRef<HTMLDivElement>(null);
 
-  // Company multi-select state
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [companySearch, setCompanySearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -100,10 +96,7 @@ export default function Dashboard() {
       toast({ title: "Preferences saved", description: subscription ? "Your companies have been updated." : "You'll receive your first newsletter at 9:00 AM IST tomorrow." });
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        setTimeout(() => { window.location.href = "/api/login"; }, 500);
-        return;
-      }
+      if (isUnauthorizedError(error)) { setTimeout(() => { window.location.href = "/api/login"; }, 500); return; }
       toast({ title: "Error", description: error.message || "Failed to save preferences", variant: "destructive" });
     },
   });
@@ -111,10 +104,8 @@ export default function Dashboard() {
   const triggerMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/admin/trigger-newsletters", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-        credentials: "include",
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}), credentials: "include",
       });
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
       return res;
@@ -131,22 +122,20 @@ export default function Dashboard() {
   const handleSavePreferences = (e: React.FormEvent) => {
     e.preventDefault();
     if (companySearch.length > 0 && !VALID_COMPANIES.find(c => c.name.toLowerCase() === companySearch.toLowerCase())) {
-      setCompanyError("Invalid company — please select from the list");
-      return;
+      setCompanyError("Invalid company — please select from the list"); return;
     }
     if (selectedCompanies.length === 0) {
-      toast({ title: "Select at least one company", variant: "destructive" });
-      return;
+      toast({ title: "Select at least one company", variant: "destructive" }); return;
     }
     subscribeMutation.mutate({ companies: selectedCompanies.join(", ") });
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-slate-500 text-sm">Loading your dashboard...</p>
+      <div className="pc-root" style={{ justifyContent: "center", alignItems: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: 40, height: 40, border: "3px solid rgba(201,168,76,0.3)", borderTopColor: "#c9a84c", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
+          <p style={{ color: "var(--pc-text-muted)", fontSize: 14 }}>Loading your dashboard…</p>
         </div>
       </div>
     );
@@ -155,366 +144,280 @@ export default function Dashboard() {
   const recentNewsletters = newsletters.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="pc-root">
 
-      {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      {/* ── Header ── */}
+      <header className="pc-header">
+        <div className="pc-header-inner">
 
           {/* Logo */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-              <Newspaper className="w-4 h-4 text-white" />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, background: "var(--pc-gold-soft)", border: "1px solid var(--pc-gold-border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Newspaper size={18} color="var(--pc-gold)" />
             </div>
-            <span className="font-bold text-slate-900 text-lg tracking-tight">Payment Chronicle</span>
+            <div>
+              <div className="pc-brand-name">Payment Chronicle</div>
+              <div className="pc-brand-sub">by Gajanan Pujari</div>
+            </div>
           </div>
 
-          {/* Nav links */}
-          <nav className="hidden sm:flex items-center gap-1">
+          {/* Nav */}
+          <nav className="hidden sm:flex" style={{ alignItems: "center", gap: 0 }}>
             <button
+              className={`pc-nav-btn${activeView === "home" ? " active" : ""}`}
               onClick={() => setActiveView("home")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeView === "home"
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
               data-testid="nav-home"
-            >
-              Home
-            </button>
+            >Home</button>
             <button
+              className={`pc-nav-btn${activeView === "archive" ? " active" : ""}`}
               onClick={() => setActiveView("archive")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeView === "archive"
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
               data-testid="nav-archive"
             >
               Newsletter Archive
               {newsletters.length > 0 && (
-                <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                  {newsletters.length}
-                </span>
+                <span className="pc-nav-badge">{newsletters.length}</span>
               )}
             </button>
           </nav>
 
           {/* User */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden md:flex items-center gap-2">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <div className="hidden md:flex" style={{ alignItems: "center", gap: 10 }}>
               {user?.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt="avatar" className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200" />
+                <img src={user.profileImageUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--pc-gold-border)" }} />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <User className="w-4 h-4 text-blue-600" />
-                </div>
+                <div className="pc-avatar-ring"><User size={15} color="var(--pc-gold)" /></div>
               )}
-              <span className="text-sm font-medium text-slate-700" data-testid="text-username">
+              <span className="pc-user-name" data-testid="text-username">
                 {user?.firstName || user?.email?.split('@')[0]}
               </span>
             </div>
-            <button
-              onClick={() => window.location.href = '/api/logout'}
-              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
-              data-testid="button-logout"
-            >
-              <LogOut className="w-3.5 h-3.5" />
+            <div className="pc-separator hidden md:block" />
+            <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout">
+              <LogOut size={14} />
               <span className="hidden sm:inline">Log out</span>
             </button>
           </div>
         </div>
-
-        {/* Mobile nav */}
-        <div className="sm:hidden flex border-t border-slate-100">
-          <button
-            onClick={() => setActiveView("home")}
-            className={`flex-1 py-2.5 text-xs font-medium transition-colors ${activeView === "home" ? "text-blue-600 bg-blue-50" : "text-slate-500"}`}
-          >Home</button>
-          <button
-            onClick={() => setActiveView("archive")}
-            className={`flex-1 py-2.5 text-xs font-medium transition-colors ${activeView === "archive" ? "text-blue-600 bg-blue-50" : "text-slate-500"}`}
-          >Archive</button>
-        </div>
       </header>
 
-      {/* ── Main Content ── */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8">
+      {/* Mobile nav */}
+      <div className="pc-mobile-nav sm:hidden">
+        <button className={`pc-mobile-nav-btn${activeView === "home" ? " active" : ""}`} onClick={() => setActiveView("home")}>Home</button>
+        <button className={`pc-mobile-nav-btn${activeView === "archive" ? " active" : ""}`} onClick={() => setActiveView("archive")}>Archive</button>
+      </div>
+
+      {/* ── Main ── */}
+      <main className="pc-main">
 
         {activeView === "home" && (
-          <div className="space-y-6">
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-            {/* Welcome Card */}
-            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Welcome Banner */}
+            <div className="pc-banner">
+              <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
                 <div>
-                  <p className="text-blue-200 text-sm font-medium mb-1">Good to see you</p>
-                  <h1 className="text-2xl sm:text-3xl font-bold">
-                    Welcome back, {user?.firstName || user?.email?.split('@')[0] || 'there'} 
-                  </h1>
-                  <p className="text-blue-100 mt-2 text-sm">
-                    Your personalised payments industry briefing, powered by AI.
-                  </p>
+                  <div className="pc-banner-eyebrow">Good to see you</div>
+                  <div className="pc-banner-title">
+                    Welcome back, {user?.firstName || user?.email?.split('@')[0] || 'there'}
+                  </div>
+                  <div className="pc-banner-sub">Your personalised payments industry briefing, powered by AI.</div>
                 </div>
-                <div className="flex flex-col gap-2 sm:items-end">
-                  {subscription ? (
-                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-3">
-                      <CheckCircle2 className="w-4 h-4 text-green-300 shrink-0" />
-                      <div>
-                        <p className="text-xs text-blue-100 font-medium">Subscription</p>
-                        <p className="text-sm font-semibold">Active</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 bg-white/15 rounded-xl px-4 py-3">
-                      <Clock className="w-4 h-4 text-blue-200 shrink-0" />
-                      <div>
-                        <p className="text-xs text-blue-100">No subscription yet</p>
-                        <p className="text-sm font-semibold">Set up below</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 bg-white/15 rounded-xl px-4 py-3">
-                    <Clock className="w-4 h-4 text-blue-200 shrink-0" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div className="pc-banner-stat">
+                    <div className="pc-banner-stat-icon"><CheckCircle2 size={18} /></div>
                     <div>
-                      <p className="text-xs text-blue-100 font-medium">Next delivery</p>
-                      <p className="text-sm font-semibold">9:00 AM IST daily</p>
+                      <div className="pc-stat-label">Subscription</div>
+                      {subscription
+                        ? <div className="pc-stat-value"><span className="pc-active-badge">Active</span></div>
+                        : <div className="pc-stat-value" style={{ color: "var(--pc-text-muted)" }}>Not set up</div>
+                      }
+                    </div>
+                  </div>
+                  <div className="pc-banner-stat">
+                    <div className="pc-banner-stat-icon"><Clock size={18} /></div>
+                    <div>
+                      <div className="pc-stat-label">Next delivery</div>
+                      <div className="pc-stat-value">9:00 AM IST daily</div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Grid: Company Preferences + Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }} className="lg:grid-cols-3-custom">
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 24 }} className="grid-responsive">
 
-              {/* Company Preferences */}
-              <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6" ref={preferencesRef}>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <Building2 className="w-4.5 h-4.5 text-blue-500" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-semibold text-slate-900">Company Preferences</h2>
-                    <p className="text-xs text-slate-500">Choose up to 3 companies to track</p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSavePreferences} className="space-y-4">
-                  {/* Multi-select */}
-                  <div className="relative" ref={dropdownRef}>
-                    <div
-                      className={`flex flex-wrap gap-1.5 p-2.5 border rounded-xl min-h-11 items-center cursor-text bg-white transition-colors ${
-                        companyError || searchMatchesNothing
-                          ? "border-red-400 ring-1 ring-red-300"
-                          : dropdownOpen ? "border-blue-400 ring-1 ring-blue-200" : "border-slate-200 hover:border-slate-300"
-                      }`}
-                      onClick={() => setDropdownOpen(true)}
-                      data-testid="input-companies"
-                    >
-                      {selectedCompanies.map(name => {
-                        const co = VALID_COMPANIES.find(c => c.name === name);
-                        return (
-                          <span
-                            key={name}
-                            className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg px-2.5 py-1 text-sm font-medium"
-                            data-testid={`chip-company-${name}`}
-                          >
-                            {co && (
-                              <img src={co.logo} alt={name} className="w-4 h-4 rounded object-contain"
-                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                            )}
-                            {name}
-                            <button
-                              type="button"
-                              onClick={e => { e.stopPropagation(); removeCompany(name); }}
-                              className="text-blue-400 hover:text-blue-700 transition-colors ml-0.5"
-                              data-testid={`button-remove-${name}`}
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        );
-                      })}
-                      <input
-                        type="text"
-                        value={companySearch}
-                        onChange={e => { setCompanySearch(e.target.value); setDropdownOpen(true); setCompanyError(null); }}
-                        onFocus={() => setDropdownOpen(true)}
-                        placeholder={selectedCompanies.length === 0 ? "Search Visa, PayPal, Discover…" : ""}
-                        className="flex-1 min-w-28 outline-none bg-transparent text-sm text-slate-900 placeholder:text-slate-400"
-                        disabled={selectedCompanies.length >= 3 || subscribeMutation.isPending}
-                        data-testid="input-company-search"
-                      />
+                {/* Company Preferences */}
+                <div className="pc-card pc-card-inner" ref={preferencesRef} style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 22 }}>
+                    <div className="pc-section-icon"><Building2 size={18} /></div>
+                    <div>
+                      <div className="pc-section-title">Company Preferences</div>
+                      <div className="pc-section-desc">Choose up to 3 companies to track</div>
                     </div>
+                  </div>
 
-                    {/* Dropdown */}
-                    {dropdownOpen && filteredCompanies.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                        {filteredCompanies.map(co => (
-                          <button
-                            type="button"
-                            key={co.name}
-                            className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-700 text-left hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                            onMouseDown={e => {
-                              e.preventDefault();
-                              setSelectedCompanies(prev => [...prev, co.name]);
-                              setCompanySearch("");
-                              setDropdownOpen(false);
-                              setCompanyError(null);
-                            }}
-                            data-testid={`option-company-${co.name}`}
-                          >
-                            <img src={co.logo} alt={co.name} className="w-5 h-5 rounded object-contain"
-                              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                            <span className="font-medium">{co.name}</span>
-                          </button>
-                        ))}
+                  <form onSubmit={handleSavePreferences} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div style={{ position: "relative" }} ref={dropdownRef}>
+                      <div
+                        className={`pc-company-input-box${companyError || searchMatchesNothing ? " error" : ""}`}
+                        onClick={() => setDropdownOpen(true)}
+                        data-testid="input-companies"
+                      >
+                        {selectedCompanies.map(name => {
+                          const co = VALID_COMPANIES.find(c => c.name === name);
+                          return (
+                            <span key={name} className="pc-chip" data-testid={`chip-company-${name}`}>
+                              {co && <img src={co.logo} alt={name} style={{ width: 16, height: 16, borderRadius: 3, objectFit: "contain" }}
+                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+                              {name}
+                              <button type="button" className="pc-chip-remove" onClick={ev => { ev.stopPropagation(); removeCompany(name); }} data-testid={`button-remove-${name}`}>
+                                <X size={12} />
+                              </button>
+                            </span>
+                          );
+                        })}
+                        <input
+                          type="text"
+                          className="pc-company-input"
+                          value={companySearch}
+                          onChange={e => { setCompanySearch(e.target.value); setDropdownOpen(true); setCompanyError(null); }}
+                          onFocus={() => setDropdownOpen(true)}
+                          placeholder={selectedCompanies.length === 0 ? "Search Visa, PayPal, Discover…" : ""}
+                          disabled={selectedCompanies.length >= 3 || subscribeMutation.isPending}
+                          data-testid="input-company-search"
+                        />
                       </div>
-                    )}
 
-                    {(companyError || searchMatchesNothing) && (
-                      <p className="text-xs text-red-500 mt-1.5" data-testid="text-company-error">
-                        Invalid company — please select from the list
-                      </p>
-                    )}
-                  </div>
+                      {dropdownOpen && filteredCompanies.length > 0 && (
+                        <div className="pc-dropdown">
+                          {filteredCompanies.map(co => (
+                            <button type="button" key={co.name} className="pc-dropdown-item"
+                              onMouseDown={e => { e.preventDefault(); setSelectedCompanies(prev => [...prev, co.name]); setCompanySearch(""); setDropdownOpen(false); setCompanyError(null); }}
+                              data-testid={`option-company-${co.name}`}>
+                              <img src={co.logo} alt={co.name} style={{ width: 20, height: 20, borderRadius: 4, objectFit: "contain" }}
+                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                              {co.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                  <Button
-                    type="submit"
-                    disabled={subscribeMutation.isPending || selectedCompanies.length === 0}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
-                    data-testid="button-save-subscription"
-                  >
-                    {subscribeMutation.isPending ? (
-                      <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />{subscription ? "Updating…" : "Subscribing…"}</>
-                    ) : (
-                      <><Settings className="w-3.5 h-3.5 mr-2" />{subscription ? "Update Preferences" : "Start My Newsletter"}</>
-                    )}
-                  </Button>
-                </form>
-              </div>
+                      {(companyError || searchMatchesNothing) && (
+                        <div className="pc-error-text" data-testid="text-company-error">
+                          Invalid company — please select from the list
+                        </div>
+                      )}
+                    </div>
 
-              {/* Quick Actions */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <Zap className="w-4.5 h-4.5 text-blue-500" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-semibold text-slate-900">Quick Actions</h2>
-                    <p className="text-xs text-slate-500">Run tasks instantly</p>
-                  </div>
+                    <div>
+                      <button type="submit" className="pc-btn-gold" disabled={subscribeMutation.isPending || selectedCompanies.length === 0} data-testid="button-save-subscription">
+                        {subscribeMutation.isPending
+                          ? <><div style={{ width: 14, height: 14, border: "2px solid rgba(10,15,30,0.3)", borderTopColor: "#0a0f1e", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />{subscription ? "Updating…" : "Subscribing…"}</>
+                          : <><Settings size={14} />{subscription ? "Update Preferences" : "Start My Newsletter"}</>
+                        }
+                      </button>
+                    </div>
+                  </form>
                 </div>
 
-                <button
-                  onClick={() => triggerMutation.mutate()}
-                  disabled={triggerMutation.isPending || !subscription}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-blue-100 bg-blue-50 hover:bg-blue-100 hover:border-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left group"
-                  data-testid="button-trigger-newsletter"
-                >
-                  <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-blue-700 transition-colors">
-                    {triggerMutation.isPending
-                      ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <Send className="w-4 h-4 text-white" />
-                    }
+                {/* Quick Actions */}
+                <div className="pc-card pc-card-inner" style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 22 }}>
+                    <div className="pc-section-icon"><Zap size={18} /></div>
+                    <div>
+                      <div className="pc-section-title">Quick Actions</div>
+                      <div className="pc-section-desc">Run tasks instantly</div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {triggerMutation.isPending ? "Generating…" : "Generate Newsletter"}
-                    </p>
-                    <p className="text-xs text-slate-500">Send to {user?.email}</p>
-                  </div>
-                </button>
 
-                <button
-                  onClick={() => {
-                    setActiveView("home");
-                    setTimeout(() => preferencesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
-                  }}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-200 hover:bg-blue-50 transition-colors text-left group"
-                  data-testid="button-update-preferences"
-                >
-                  <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                    <Settings className="w-4 h-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Update Preferences</p>
-                    <p className="text-xs text-slate-500">Change tracked companies</p>
-                  </div>
-                </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <button
+                      className="pc-action-item"
+                      onClick={() => triggerMutation.mutate()}
+                      disabled={triggerMutation.isPending || !subscription}
+                      data-testid="button-trigger-newsletter"
+                    >
+                      <div className="pc-action-icon-primary">
+                        {triggerMutation.isPending
+                          ? <div style={{ width: 16, height: 16, border: "2px solid rgba(10,15,30,0.3)", borderTopColor: "#0a0f1e", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                          : <Send size={16} />
+                        }
+                      </div>
+                      <div>
+                        <div className="pc-action-title">{triggerMutation.isPending ? "Generating…" : "Generate Newsletter"}</div>
+                        <div className="pc-action-desc">Send to {user?.email?.split('@')[0]}…</div>
+                      </div>
+                    </button>
 
-                <button
-                  onClick={() => setActiveView("archive")}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-200 hover:bg-blue-50 transition-colors text-left group"
-                  data-testid="button-view-archive"
-                >
-                  <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                    <FileText className="w-4 h-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
+                    <button className="pc-action-item" onClick={() => { setActiveView("home"); setTimeout(() => preferencesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }} data-testid="button-update-preferences">
+                      <div className="pc-action-icon"><Settings size={16} /></div>
+                      <div>
+                        <div className="pc-action-title">Update Preferences</div>
+                        <div className="pc-action-desc">Change tracked companies</div>
+                      </div>
+                    </button>
+
+                    <button className="pc-action-item" onClick={() => setActiveView("archive")} data-testid="button-view-archive">
+                      <div className="pc-action-icon"><FileText size={16} /></div>
+                      <div>
+                        <div className="pc-action-title">View Archive</div>
+                        <div className="pc-action-desc">{newsletters.length} newsletter{newsletters.length !== 1 ? "s" : ""}</div>
+                      </div>
+                    </button>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">View Archive</p>
-                    <p className="text-xs text-slate-500">{newsletters.length} newsletter{newsletters.length !== 1 ? "s" : ""} stored</p>
-                  </div>
-                </button>
+                </div>
               </div>
             </div>
 
-            {/* Newsletter Timeline */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <Clock className="w-4.5 h-4.5 text-blue-500" />
-                  </div>
+            {/* Recent Newsletters Timeline */}
+            <div className="pc-card pc-card-inner">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div className="pc-section-icon"><Clock size={18} /></div>
                   <div>
-                    <h2 className="text-base font-semibold text-slate-900">Recent Newsletters</h2>
-                    <p className="text-xs text-slate-500">Your latest briefings</p>
+                    <div className="pc-section-title">Recent Newsletters</div>
+                    <div className="pc-section-desc">Your latest briefings</div>
                   </div>
                 </div>
                 {newsletters.length > 3 && (
-                  <button
-                    onClick={() => setActiveView("archive")}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                  >
+                  <button className="pc-gold-link" onClick={() => setActiveView("archive")}>
                     View all {newsletters.length} →
                   </button>
                 )}
               </div>
 
               {newslettersLoading ? (
-                <div className="space-y-4">
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {[1, 2].map(i => (
-                    <div key={i} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <Skeleton className="w-3 h-3 rounded-full" />
-                        <Skeleton className="w-0.5 h-12 mt-1" />
-                      </div>
-                      <div className="flex-1 pb-4 space-y-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-full" />
-                        <Skeleton className="h-3 w-3/4" />
+                    <div key={i} style={{ display: "flex", gap: 16 }}>
+                      <div className="pc-skeleton" style={{ width: 12, height: 12, borderRadius: "50%", flexShrink: 0, marginTop: 4 }} />
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div className="pc-skeleton" style={{ height: 14, width: 140 }} />
+                        <div className="pc-skeleton" style={{ height: 12, width: "100%" }} />
+                        <div className="pc-skeleton" style={{ height: 12, width: "70%" }} />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : recentNewsletters.length === 0 ? (
-                <div className="text-center py-10">
-                  <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Newspaper className="w-6 h-6 text-slate-400" />
+                <div style={{ textAlign: "center", padding: "40px 0" }}>
+                  <div style={{ width: 56, height: 56, background: "var(--pc-surface-2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                    <Newspaper size={24} color="var(--pc-text-muted)" />
                   </div>
-                  <p className="text-sm font-medium text-slate-900">No newsletters yet</p>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--pc-text)", marginBottom: 4 }}>No newsletters yet</div>
+                  <div style={{ fontSize: 13, color: "var(--pc-text-muted)" }}>
                     {subscription ? "Your first newsletter arrives tomorrow at 9:00 AM IST" : "Subscribe to companies above to get started"}
-                  </p>
+                  </div>
                 </div>
               ) : (
-                <div className="relative">
-                  {/* Timeline line */}
-                  <div className="absolute left-[5px] top-2 bottom-0 w-px bg-slate-100" />
-                  <div className="space-y-0">
-                    {recentNewsletters.map((newsletter, idx) => (
-                      <TimelineCard key={newsletter.id} newsletter={newsletter} isLast={idx === recentNewsletters.length - 1} />
+                <div style={{ position: "relative" }}>
+                  <div className="pc-timeline-line" />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                    {recentNewsletters.map((nl, idx) => (
+                      <TimelineCard key={nl.id} newsletter={nl} isLast={idx === recentNewsletters.length - 1} />
                     ))}
                   </div>
                 </div>
@@ -524,42 +427,40 @@ export default function Dashboard() {
         )}
 
         {activeView === "archive" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-3">
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Newsletter Archive</h2>
-                <p className="text-sm text-slate-500">All your past briefings in one place</p>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--pc-text)", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Newsletter Archive</div>
+                <div style={{ fontSize: 14, color: "var(--pc-text-muted)" }}>All your past briefings in one place</div>
               </div>
-              <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-3 py-1.5 rounded-full">
+              <div style={{ background: "var(--pc-gold-soft)", border: "1px solid var(--pc-gold-border)", color: "var(--pc-gold)", borderRadius: 999, padding: "4px 14px", fontSize: 13, fontWeight: 600 }}>
                 {newsletters.length} newsletter{newsletters.length !== 1 ? "s" : ""}
-              </span>
+              </div>
             </div>
 
             {newslettersLoading ? (
-              <div className="space-y-4">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-3">
-                    <Skeleton className="h-5 w-40" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
+                  <div key={i} className="pc-card pc-card-inner" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div className="pc-skeleton" style={{ height: 16, width: 160 }} />
+                    <div className="pc-skeleton" style={{ height: 13, width: "100%" }} />
+                    <div className="pc-skeleton" style={{ height: 13, width: "60%" }} />
                   </div>
                 ))}
               </div>
             ) : newsletters.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-14 text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Newspaper className="w-7 h-7 text-slate-400" />
+              <div className="pc-card" style={{ padding: "60px 32px", textAlign: "center" }}>
+                <div style={{ width: 64, height: 64, background: "var(--pc-surface-2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  <Newspaper size={28} color="var(--pc-text-muted)" />
                 </div>
-                <p className="font-semibold text-slate-900">No newsletters yet</p>
-                <p className="text-sm text-slate-500 mt-1">
+                <div style={{ fontSize: 16, fontWeight: 600, color: "var(--pc-text)", marginBottom: 6 }}>No newsletters yet</div>
+                <div style={{ fontSize: 14, color: "var(--pc-text-muted)" }}>
                   {subscription ? "Your first newsletter arrives tomorrow at 9:00 AM IST" : "Subscribe on the Home tab to start receiving newsletters"}
-                </p>
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                {newsletters.map(newsletter => (
-                  <ArchiveCard key={newsletter.id} newsletter={newsletter} />
-                ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {newsletters.map(nl => <ArchiveCard key={nl.id} newsletter={nl} />)}
               </div>
             )}
           </div>
@@ -567,14 +468,12 @@ export default function Dashboard() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="bg-white border-t border-slate-200 mt-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-slate-400">
-            © {new Date().getFullYear()} Payment Chronicle by Gajanan. All rights reserved.
-          </p>
-          <div className="flex items-center gap-4">
-            <a href="#" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">Privacy Policy</a>
-            <a href="#" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">Terms of Service</a>
+      <footer className="pc-footer">
+        <div className="pc-footer-inner">
+          <span className="pc-footer-copy">© {new Date().getFullYear()} Payment Chronicle by Gajanan. All rights reserved.</span>
+          <div style={{ display: "flex", gap: 20 }}>
+            <a href="#" className="pc-footer-link">Privacy Policy</a>
+            <a href="#" className="pc-footer-link">Terms of Service</a>
           </div>
         </div>
       </footer>
@@ -582,6 +481,7 @@ export default function Dashboard() {
   );
 }
 
+/* ── Timeline Card (Recent) ── */
 function TimelineCard({ newsletter, isLast }: { newsletter: Newsletter; isLast: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const { data: articles = [] } = useQuery<Article[]>({
@@ -594,31 +494,26 @@ function TimelineCard({ newsletter, isLast }: { newsletter: Newsletter; isLast: 
   const timeAgo = formatTimeAgo(date);
 
   return (
-    <div className={`relative flex gap-4 ${isLast ? "" : "pb-5"}`}>
-      {/* Dot */}
-      <div className="flex flex-col items-center shrink-0 mt-1">
-        <div className={`w-2.5 h-2.5 rounded-full border-2 border-white ring-2 z-10 ${newsletter.emailSent ? "bg-green-500 ring-green-200" : "bg-blue-400 ring-blue-200"}`} />
+    <div style={{ display: "flex", gap: 16, paddingBottom: isLast ? 0 : 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+        <div className={newsletter.emailSent ? "pc-timeline-dot-delivered" : "pc-timeline-dot-pending"} />
       </div>
-
-      {/* Card */}
-      <div className="flex-1 bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-200 hover:shadow-sm rounded-xl p-4 transition-all">
-        <div className="flex items-start justify-between gap-2 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-sm font-semibold text-slate-900">{formattedDate}</span>
-              <span className="text-xs text-slate-400">{timeAgo}</span>
+      <div className="pc-timeline-card" style={{ flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--pc-text)" }}>{formattedDate}</span>
+              <span style={{ fontSize: 12, color: "var(--pc-text-muted)" }}>{timeAgo}</span>
               {newsletter.emailSent && (
-                <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 border border-green-100 rounded-full px-2 py-0.5 font-medium">
-                  <CheckCircle2 className="w-3 h-3" /> Delivered
-                </span>
+                <span className="pc-delivered-badge"><CheckCircle2 size={11} /> Delivered</span>
               )}
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {newsletter.companies.split(',').map((co, i) => {
                 const match = VALID_COMPANIES.find(c => c.name.toLowerCase() === co.trim().toLowerCase());
                 return (
-                  <span key={i} className="flex items-center gap-1 text-xs bg-white border border-slate-200 text-slate-600 rounded-full px-2 py-0.5">
-                    {match && <img src={match.logo} alt={match.name} className="w-3 h-3 rounded object-contain"
+                  <span key={i} className="pc-company-tag">
+                    {match && <img src={match.logo} alt={match.name} style={{ width: 14, height: 14, borderRadius: 3, objectFit: "contain" }}
                       onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
                     {co.trim()}
                   </span>
@@ -626,43 +521,38 @@ function TimelineCard({ newsletter, isLast }: { newsletter: Newsletter; isLast: 
               })}
             </div>
           </div>
-          <div className="flex gap-1.5">
+          <div style={{ display: "flex", gap: 6 }}>
             {newsletter.pdfPath && (
-              <button
-                onClick={() => newsletter.pdfPath && window.open(newsletter.pdfPath, '_blank')}
-                className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-white border border-slate-200 hover:border-blue-200 rounded-lg px-2.5 py-1.5 transition-colors"
-                data-testid={`button-download-${newsletter.id}`}
-              >
-                <Download className="w-3 h-3" /> PDF
+              <button className="pc-icon-btn" onClick={() => newsletter.pdfPath && window.open(newsletter.pdfPath, '_blank')} data-testid={`button-download-${newsletter.id}`}>
+                <Download size={12} /> PDF
               </button>
             )}
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-white border border-slate-200 hover:border-blue-200 rounded-lg px-2.5 py-1.5 transition-colors"
-              data-testid={`button-toggle-${newsletter.id}`}
-            >
-              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            <button className="pc-icon-btn" onClick={() => setExpanded(!expanded)} data-testid={`button-toggle-${newsletter.id}`}>
+              {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
           </div>
         </div>
 
         {expanded && (
-          <div className="mt-3 pt-3 border-t border-slate-200 space-y-4">
-            {articles.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-2">Loading articles…</p>
-            ) : (
-              articles.map(article => (
-                <div key={article.id} className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-800 font-serif">{article.headline}</p>
-                  <p className="text-xs text-slate-500 line-clamp-2">{article.summary}</p>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <span>{article.sourceName}</span>
+          <div className="pc-article-divider">
+            {articles.length === 0
+              ? <div style={{ fontSize: 13, color: "var(--pc-text-muted)", textAlign: "center", padding: "8px 0" }}>Loading articles…</div>
+              : articles.map(a => (
+                <div key={a.id} style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--pc-text)", fontFamily: "'Lora', serif", marginBottom: 4 }}>{a.headline}</div>
+                  <div style={{ fontSize: 13, color: "var(--pc-text-muted)", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 6 }}>{a.summary}</div>
+                  <div style={{ display: "flex", gap: 8, fontSize: 12, color: "var(--pc-text-muted)", alignItems: "center" }}>
+                    <span style={{ fontWeight: 500 }}>{a.sourceName}</span>
                     <span>·</span>
-                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Read more →</a>
+                    <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--pc-gold)", textDecoration: "none", transition: "filter 0.2s" }}
+                      onMouseEnter={e => (e.currentTarget.style.filter = "brightness(1.2)")}
+                      onMouseLeave={e => (e.currentTarget.style.filter = "")}>
+                      Read more →
+                    </a>
                   </div>
                 </div>
               ))
-            )}
+            }
           </div>
         )}
       </div>
@@ -670,6 +560,7 @@ function TimelineCard({ newsletter, isLast }: { newsletter: Newsletter; isLast: 
   );
 }
 
+/* ── Archive Card ── */
 function ArchiveCard({ newsletter }: { newsletter: Newsletter }) {
   const [expanded, setExpanded] = useState(false);
   const { data: articles = [] } = useQuery<Article[]>({
@@ -681,24 +572,20 @@ function ArchiveCard({ newsletter }: { newsletter: Newsletter }) {
   const formattedDate = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:border-blue-200 hover:shadow-md transition-all">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <h3 className="text-sm font-semibold text-slate-900">{formattedDate}</h3>
-              {newsletter.emailSent && (
-                <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 border border-green-100 rounded-full px-2 py-0.5 font-medium">
-                  <CheckCircle2 className="w-3 h-3" /> Delivered
-                </span>
-              )}
+    <div className="pc-archive-card">
+      <div style={{ padding: "20px 28px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 600, color: "var(--pc-text)" }}>{formattedDate}</span>
+              {newsletter.emailSent && <span className="pc-delivered-badge"><CheckCircle2 size={11} /> Delivered</span>}
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {newsletter.companies.split(',').map((co, i) => {
                 const match = VALID_COMPANIES.find(c => c.name.toLowerCase() === co.trim().toLowerCase());
                 return (
-                  <span key={i} className="flex items-center gap-1 text-xs bg-slate-50 border border-slate-200 text-slate-600 rounded-full px-2.5 py-1">
-                    {match && <img src={match.logo} alt={match.name} className="w-3.5 h-3.5 rounded object-contain"
+                  <span key={i} className="pc-company-tag">
+                    {match && <img src={match.logo} alt={match.name} style={{ width: 14, height: 14, borderRadius: 3, objectFit: "contain" }}
                       onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
                     {co.trim()}
                   </span>
@@ -706,45 +593,40 @@ function ArchiveCard({ newsletter }: { newsletter: Newsletter }) {
               })}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {newsletter.pdfPath && (
-              <button
-                onClick={() => newsletter.pdfPath && window.open(newsletter.pdfPath, '_blank')}
-                className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-xl px-3 py-2 transition-all"
-                data-testid={`button-download-${newsletter.id}`}
-              >
-                <Download className="w-3.5 h-3.5" /> PDF
+              <button className="pc-icon-btn" style={{ fontSize: 13, padding: "8px 14px" }}
+                onClick={() => newsletter.pdfPath && window.open(newsletter.pdfPath, '_blank')} data-testid={`button-download-${newsletter.id}`}>
+                <Download size={13} /> PDF
               </button>
             )}
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-xl px-3 py-2 transition-all"
-              data-testid={`button-toggle-${newsletter.id}`}
-            >
-              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <button className="pc-icon-btn" style={{ fontSize: 13, padding: "8px 14px" }}
+              onClick={() => setExpanded(!expanded)} data-testid={`button-toggle-${newsletter.id}`}>
+              {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
           </div>
         </div>
 
         {expanded && (
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
-            {articles.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-3">Loading articles…</p>
-            ) : (
-              articles.map(article => (
-                <div key={article.id} className="space-y-1.5">
-                  <p className="text-sm font-semibold text-slate-800 font-serif">{article.headline}</p>
-                  <p className="text-xs text-slate-500 line-clamp-3">{article.summary}</p>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <span className="font-medium text-slate-500">{article.sourceName}</span>
+          <div className="pc-article-divider">
+            {articles.length === 0
+              ? <div style={{ fontSize: 13, color: "var(--pc-text-muted)", textAlign: "center", padding: "10px 0" }}>Loading articles…</div>
+              : articles.map(a => (
+                <div key={a.id} style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--pc-text)", fontFamily: "'Lora', serif", marginBottom: 6 }}>{a.headline}</div>
+                  <div style={{ fontSize: 13, color: "var(--pc-text-muted)", lineHeight: 1.65, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 8 }}>{a.summary}</div>
+                  <div style={{ display: "flex", gap: 8, fontSize: 12, color: "var(--pc-text-muted)", alignItems: "center" }}>
+                    <span style={{ fontWeight: 500, color: "var(--pc-text-muted)" }}>{a.sourceName}</span>
                     <span>·</span>
-                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
+                    <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--pc-gold)", textDecoration: "none" }}
+                      onMouseEnter={e => (e.currentTarget.style.filter = "brightness(1.2)")}
+                      onMouseLeave={e => (e.currentTarget.style.filter = "")}>
                       Read more →
                     </a>
                   </div>
                 </div>
               ))
-            )}
+            }
           </div>
         )}
       </div>
@@ -753,13 +635,12 @@ function ArchiveCard({ newsletter }: { newsletter: Newsletter }) {
 }
 
 function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffHours < 1) return "just now";
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return `${Math.floor(diffDays / 7)}w ago`;
+  const diffMs = Date.now() - date.getTime();
+  const h = Math.floor(diffMs / 3600000);
+  const d = Math.floor(diffMs / 86400000);
+  if (h < 1) return "just now";
+  if (h < 24) return `${h}h ago`;
+  if (d === 1) return "yesterday";
+  if (d < 7) return `${d}d ago`;
+  return `${Math.floor(d / 7)}w ago`;
 }
