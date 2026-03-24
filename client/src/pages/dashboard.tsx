@@ -150,27 +150,18 @@ export default function Dashboard() {
       <header className="pc-header">
         <div className="pc-header-inner">
 
-          {/* Row 1: 3-column grid - left empty | center brand | right nav+user */}
+          {/* Row 1: 2-row stacked navbar */}
           <div className="pc-header-row1">
 
-            {/* Left empty column */}
-            <div></div>
-
-            {/* Center column: Centered Logo + Brand */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0, justifyContent: "center" }}>
+            {/* Top row: Logo | Nav (centered) | User */}
+            <div className="pc-header-top-row">
+              {/* Logo on left */}
               <div style={{ width: 36, height: 36, background: "rgba(255,255,255,0.20)", border: "1px solid rgba(255,255,255,0.40)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Newspaper size={18} color="#ffffff" />
               </div>
-              <div>
-                <div className="pc-brand-name">Payment Chronicle</div>
-                <div className="pc-brand-sub">by Gajanan Pujari</div>
-              </div>
-            </div>
 
-            {/* Right column: Nav + User */}
-            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-              {/* Nav */}
-              <nav className="hidden sm:flex" style={{ alignItems: "center", gap: 0 }}>
+              {/* Nav centered */}
+              <nav className="hidden sm:flex">
                 <button
                   className={`pc-nav-btn${activeView === "home" ? " active" : ""}`}
                   onClick={() => setActiveView("home")}
@@ -188,25 +179,25 @@ export default function Dashboard() {
                 </button>
               </nav>
 
-              {/* Divider */}
-              <div className="pc-separator hidden md:block" />
-
-              {/* User */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                <div className="hidden md:flex" style={{ alignItems: "center", gap: 10 }}>
-                  {user?.profileImageUrl ? (
-                    <img src={user.profileImageUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--pc-gold-border)" }} />
-                  ) : (
-                    <div className="pc-avatar-ring"><User size={15} color="var(--pc-gold)" /></div>
-                  )}
-                  <span className="pc-user-name" data-testid="text-username">
-                    {user?.firstName || user?.email?.split('@')[0]}
-                  </span>
-                </div>
-                <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout">
-                  <LogOut size={14} />
-                  <span className="hidden sm:inline">Log out</span>
+              {/* User on right */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span className="pc-user-name" style={{ color: "#ffffff", fontWeight: 600 }} data-testid="text-username">
+                  {user?.firstName || user?.email?.split('@')[0]}
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.2)" }}>|</span>
+                <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout" style={{ color: "#93c5fd", fontWeight: 500 }}>
+                  <span>Log out</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Brand row: centered */}
+            <div className="pc-header-brand-row">
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div>
+                  <div className="pc-brand-name">Payment Chronicle</div>
+                  <div className="pc-brand-sub">BY GAJANAN PUJARI</div>
+                </div>
               </div>
             </div>
           </div>

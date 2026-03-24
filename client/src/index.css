@@ -390,41 +390,54 @@
   z-index: 2; /* above the ::after fade */
 }
 
-/* Row 1: 3-column grid layout - left empty | center brand | right nav+user */
+/* Row 1: 2-row stacked navbar */
 .pc-header-row1 {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  height: 80px;
+  display: flex;
+  flex-direction: column;
   padding: 0 40px;
-  gap: 0;
   position: relative;
 }
 
-/* Left column - empty */
-.pc-header-row1 > :nth-child(1) {
-  grid-column: 1;
-  justify-self: start;
+/* Top row: Logo | Nav (centered) | User */
+.pc-header-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 52px;
+  position: relative;
 }
 
-/* Center column - centered brand */
-.pc-header-row1 > :nth-child(2) {
-  grid-column: 2;
-  justify-self: center;
+/* Logo on left */
+.pc-header-top-row > :nth-child(1) {
+  flex-shrink: 0;
+}
+
+/* Nav links centered in top row */
+.pc-header-top-row nav {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+/* User section on right */
+.pc-header-top-row > :nth-child(3) {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Brand row: centered, full width */
+.pc-header-brand-row {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
-}
-
-/* Right column - nav + user */
-.pc-header-row1 > :nth-child(3) {
-  grid-column: 3;
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 28px;
+  justify-content: center;
+  height: 60px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Row 2: welcome copy + pills */
