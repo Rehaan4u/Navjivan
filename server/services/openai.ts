@@ -24,21 +24,15 @@ export async function generateNewsSummary(
   newsText: string,
   company: string
 ): Promise<{ headline: string; summary: string }> {
-  const prompt = `You are a professional financial journalist writing for payment industry executives.
+  const systemPrompt = `You are a senior payments industry analyst writing concise intelligence briefs in the style of Bloomberg News. Be professional, neutral, and precise. No clickbait, no filler.`;
 
-TASK: Create a Finshots-style news summary for the following news article about ${company}:
+  const userPrompt = `Summarise the following news about ${company} for payments industry professionals.
 
 ${newsText}
 
-REQUIREMENTS:
-1. Headline: Create an engaging, concise headline (max 100 characters)
-2. Summary: Write a clear, witty paragraph summary in Finshots style (150-200 words)
-   - Use simple, accessible language
-   - Include key facts and implications
-   - Make it engaging and slightly conversational
-   - Focus on "what it means" not just "what happened"
-
-Return your response in JSON format with "headline" and "summary" fields.`;
+Return JSON with exactly two fields:
+- "headline": max 12 words, sharp and specific, no clickbait
+- "summary": exactly 3 sentences, max 80 words total. Sentence 1: what happened. Sentence 2: why it matters to payments professionals. Sentence 3: one forward-looking implication.`;
 
   try {
     const response = await pRetry(
@@ -46,9 +40,12 @@ Return your response in JSON format with "headline" and "summary" fields.`;
         try {
           const completion = await openai.chat.completions.create({
             model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-            messages: [{ role: "user", content: prompt }],
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
             response_format: { type: "json_object" },
-            max_completion_tokens: 800,
+            max_tokens: 300,
           });
           
           const content = completion.choices[0]?.message?.content || "{}";
