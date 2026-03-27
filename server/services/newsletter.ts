@@ -1,8 +1,6 @@
-/*NEW*/
 import { storage } from "../storage";
 import { generateNewsSummary, scoreArticleRelevance } from "./openai";
-import axios from "axios";
-import * as cheerio from "cheerio";
+import Parser from "rss-parser";
 import pLimit from "p-limit";
 import { createHash } from "crypto";
 
@@ -14,237 +12,56 @@ interface NewsItem {
   publishedAt: Date;
 }
 
-const NEWS_SOURCES = [
-  {
-    name: "PaymentsJournal",
-    url: "https://www.paymentsjournal.com/",
-    scraper: scrapePaymentsJournal,
-  },
-  {
-    name: "PaymentsDive",
-    url: "https://www.paymentsdive.com/",
-    scraper: scrapePaymentsDive,
-  },
-  {
-    name: "The Paypers",
-    url: "https://thepaypers.com/",
-    scraper: scrapeThePaypers,
-  },
-];
-
-async function scrapePaymentsJournal(company: string): Promise<NewsItem[]> {
+async function fetchRSSArticles(company: string): Promise<NewsItem[]> {
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(company + " payments")}`;
+  const parser = new Parser({ timeout: 10000 });
   try {
-    const searchUrl = `https://www.paymentsjournal.com/?s=${encodeURIComponent(company)}`;
-    const response = await axios.get(searchUrl, {
-      timeout: 30000,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    const $ = cheerio.load(response.data);
-    const articles: NewsItem[] = [];
-
-    $("article")
-      .slice(0, 3)
-      .each((_, element) => {
-        const $article = $(element);
-        const title = $article.find("h2 a, h3 a").first().text().trim();
-        const url = $article.find("h2 a, h3 a").first().attr("href") || "";
-        const excerpt = $article
-          .find(".entry-content, .excerpt, p")
-          .first()
-          .text()
-          .trim();
-        const dateStr =
-          $article.find("time").attr("datetime") ||
-          $article.find(".published").text();
-
-        if (title && url && excerpt) {
-          articles.push({
-            title,
-            text: excerpt || title,
-            url,
-            source: "PaymentsJournal",
-            publishedAt: dateStr ? new Date(dateStr) : new Date(),
-          });
-        }
-      });
-
-    return articles;
+    const feed = await parser.parseURL(url);
+    return (feed.items || []).map((item) => ({
+      title: item.title || "",
+      text: item.contentSnippet || item.content || item.title || "",
+      url: item.link || "",
+      source: (item as any).source?._ || item.creator || "Google News",
+      publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+    }));
   } catch (error) {
-    console.error("Error scraping PaymentsJournal:", error);
+    console.error(`Error fetching RSS for ${company}:`, error);
     return [];
   }
 }
 
-async function scrapePaymentsDive(company: string): Promise<NewsItem[]> {
-  try {
-    const searchUrl = `https://www.paymentsdive.com/search/?q=${encodeURIComponent(company)}`;
-    const response = await axios.get(searchUrl, {
-      timeout: 30000,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
+const STOP_WORDS = new Set([
+  "the", "a", "an", "in", "of", "for", "to", "is",
+  "and", "or", "with", "on", "at", "by",
+]);
 
-    const $ = cheerio.load(response.data);
-    const articles: NewsItem[] = [];
-
-    $(".feed__item, .search-result, article")
-      .slice(0, 3)
-      .each((_, element) => {
-        const $article = $(element);
-        const title = $article.find("h3, h2, .feed__title").text().trim();
-        const url = $article.find("a").first().attr("href") || "";
-        const excerpt = $article
-          .find(".feed__description, .search-result__description, p")
-          .text()
-          .trim();
-
-        if (title && url) {
-          const fullUrl = url.startsWith("http")
-            ? url
-            : `https://www.paymentsdive.com${url}`;
-          articles.push({
-            title,
-            text: excerpt || title,
-            url: fullUrl,
-            source: "PaymentsDive",
-            publishedAt: new Date(),
-          });
-        }
-      });
-
-    return articles;
-  } catch (error) {
-    console.error("Error scraping PaymentsDive:", error);
-    return [];
-  }
-}
-
-async function scrapeThePaypers(company: string): Promise<NewsItem[]> {
-  try {
-    const searchUrl = `https://thepaypers.com/search?keyword=${encodeURIComponent(company)}`;
-    const response = await axios.get(searchUrl, {
-      timeout: 30000,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    const $ = cheerio.load(response.data);
-    const articles: NewsItem[] = [];
-
-    $(".news-item, .search-result, article")
-      .slice(0, 3)
-      .each((_, element) => {
-        const $article = $(element);
-        const title = $article.find("h2, h3, .title").text().trim();
-        const url = $article.find("a").first().attr("href") || "";
-        const excerpt = $article
-          .find(".description, .excerpt, p")
-          .text()
-          .trim();
-
-        if (title && url) {
-          const fullUrl = url.startsWith("http")
-            ? url
-            : `https://thepaypers.com${url}`;
-          articles.push({
-            title,
-            text: excerpt || title,
-            url: fullUrl,
-            source: "The Paypers",
-            publishedAt: new Date(),
-          });
-        }
-      });
-
-    return articles;
-  } catch (error) {
-    console.error("Error scraping The Paypers:", error);
-    return [];
-  }
-}
-
-function calculateSimilarity(str1: string, str2: string): number {
-  const s1 = str1.toLowerCase().trim();
-  const s2 = str2.toLowerCase().trim();
-
-  if (s1 === s2) return 1;
-
-  const len1 = s1.length;
-  const len2 = s2.length;
-  const maxLen = Math.max(len1, len2);
-  if (maxLen === 0) return 1;
-
-  const distance = levenshteinDistance(s1, s2);
-  return 1 - distance / maxLen;
-}
-
-function levenshteinDistance(str1: string, str2: string): number {
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= str1.length; i++) {
-    matrix[i] = [i];
-  }
-
-  for (let j = 0; j <= str2.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= str1.length; i++) {
-    for (let j = 1; j <= str2.length; j++) {
-      if (str1[i - 1] === str2[j - 1]) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1,
-        );
-      }
-    }
-  }
-
-  return matrix[str1.length][str2.length];
+function titleFingerprint(title: string): string {
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w && !STOP_WORDS.has(w));
+  return words
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 3)
+    .sort()
+    .join("-");
 }
 
 function removeDuplicates(articles: NewsItem[]): NewsItem[] {
+  const urlSet = new Set<string>();
+  const fingerprintSet = new Set<string>();
   const unique: NewsItem[] = [];
-  const SIMILARITY_THRESHOLD = 0.75;
 
   for (const article of articles) {
-    let isDuplicate = false;
-
-    for (const existing of unique) {
-      const titleSimilarity = calculateSimilarity(
-        article.title,
-        existing.title,
-      );
-
-      if (titleSimilarity > SIMILARITY_THRESHOLD) {
-        isDuplicate = true;
-        console.log(
-          `Duplicate found: "${article.title}" similar to "${existing.title}" (${(titleSimilarity * 100).toFixed(1)}%)`,
-        );
-        break;
-      }
-
-      if (article.url === existing.url) {
-        isDuplicate = true;
-        console.log(`Duplicate URL found: ${article.url}`);
-        break;
-      }
+    const fp = titleFingerprint(article.title);
+    if (urlSet.has(article.url) || fingerprintSet.has(fp)) {
+      console.log(`Duplicate removed: "${article.title}"`);
+      continue;
     }
-
-    if (!isDuplicate) {
-      unique.push(article);
-    }
+    urlSet.add(article.url);
+    fingerprintSet.add(fp);
+    unique.push(article);
   }
 
   console.log(`Removed ${articles.length - unique.length} duplicate articles`);
@@ -256,58 +73,27 @@ function filterRelevantArticles(
   company: string,
 ): NewsItem[] {
   const PAYMENTS_KEYWORDS = [
-    "payment",
-    "payments",
-    "fintech",
-    "financial",
-    "transaction",
-    "banking",
-    "merchant",
-    "checkout",
-    "credit card",
-    "debit",
-    "mobile wallet",
-    "digital wallet",
-    "pos",
-    "point of sale",
-    "ecommerce",
-    "e-commerce",
-    "processor",
-    "gateway",
-    "acquiring",
-    "issuing",
-    "settlement",
-    "compliance",
-    "regulation",
-    "fraud",
-    "security",
-    "authentication",
-    "tokenization",
-    "cryptocurrency",
-    "blockchain",
-    "revenue",
-    "earnings",
-    "partnership",
-    "acquisition",
-    "growth",
-    "expansion",
+    "payment", "payments", "fintech", "financial", "transaction",
+    "banking", "merchant", "checkout", "credit card", "debit",
+    "mobile wallet", "digital wallet", "pos", "point of sale",
+    "ecommerce", "e-commerce", "processor", "gateway", "acquiring",
+    "issuing", "settlement", "compliance", "regulation", "fraud",
+    "security", "authentication", "tokenization", "cryptocurrency",
+    "blockchain", "revenue", "earnings", "partnership", "acquisition",
+    "growth", "expansion",
   ];
 
   return articles.filter((article) => {
     const combinedText = `${article.title} ${article.text}`.toLowerCase();
     const companyLower = company.toLowerCase();
-
     const mentionsCompany = combinedText.includes(companyLower);
     const hasPaymentsKeyword = PAYMENTS_KEYWORDS.some((keyword) =>
       combinedText.includes(keyword.toLowerCase()),
     );
-
     const isRelevant = mentionsCompany || hasPaymentsKeyword;
-
     if (!isRelevant) {
       console.log(`Filtered out irrelevant article: "${article.title}"`);
     }
-
     return isRelevant;
   });
 }
@@ -368,25 +154,11 @@ function computeContentHash(urls: string[]): string {
 }
 
 async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
-  console.log(`Scraping all sources for ${company} in parallel...`);
+  console.log(`Fetching RSS articles for ${company}...`);
 
-  const results = await Promise.allSettled(
-    NEWS_SOURCES.map((source) =>
-      withTimeout(source.scraper(company), 8000, source.name).catch((err) => {
-        console.error(`Error with ${source.name} for ${company}:`, err.message);
-        return [] as NewsItem[];
-      }),
-    ),
-  );
+  const rawArticles = await fetchRSSArticles(company);
 
-  const allArticles: NewsItem[] = [];
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      allArticles.push(...result.value);
-    }
-  }
-
-  if (allArticles.length === 0) {
+  if (rawArticles.length === 0) {
     console.log(`No articles found for ${company}, using fallback`);
     return [
       {
@@ -399,9 +171,9 @@ async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
     ];
   }
 
-  console.log(`Found ${allArticles.length} raw articles for ${company}`);
+  console.log(`Found ${rawArticles.length} raw articles for ${company}`);
 
-  const keywordFiltered = filterRelevantArticles(allArticles, company);
+  const keywordFiltered = filterRelevantArticles(rawArticles, company);
   console.log(`${keywordFiltered.length} articles after keyword filtering`);
 
   const deduplicated = removeDuplicates(keywordFiltered);
@@ -440,7 +212,6 @@ export async function generateNewsletterForSubscription(
       .filter((c) => c.length > 0);
     console.log(`📋 Companies: ${companies.join(", ")}`);
 
-    // Fetch news for all companies in parallel
     console.log(`\n🔍 Fetching news for all companies in parallel...`);
     const companyNewsResults = await Promise.allSettled(
       companies.map((company) =>
@@ -455,14 +226,12 @@ export async function generateNewsletterForSubscription(
       }
     }
 
-    // Compute content hash
     const allFetchedUrls = companyNewsMap.flatMap(({ items }) =>
       items.map((i) => i.url),
     );
     const contentHash = computeContentHash(allFetchedUrls);
     console.log(`📋 Content hash: ${contentHash}`);
 
-    // Always create a fresh newsletter record — no skip, no reuse
     console.log(`\n📰 Creating newsletter record...`);
     const newsletter = await storage.createNewsletter({
       subscriptionId: subscription.id,
@@ -472,39 +241,46 @@ export async function generateNewsletterForSubscription(
     });
     console.log(`✅ Created newsletter ${newsletter.id}`);
 
-    // Generate AI summaries
-    const allArticles = [];
-    console.log(`\n🤖 Starting AI summarization...`);
+    console.log(`\n🤖 Starting AI summarization (parallel, concurrency 3)...`);
+    const limit = pLimit(3);
 
-    for (const { company, items } of companyNewsMap) {
-      console.log(
-        `\n--- AI summarization for ${company}: ${items.length} articles ---`,
-      );
-      for (let j = 0; j < items.length; j++) {
-        const newsItem = items[j];
-        console.log(
-          `  Article ${j + 1}/${items.length}: "${newsItem.title.substring(0, 60)}..."`,
-        );
-        try {
-          const { headline, summary } = await generateNewsSummary(
-            newsItem.text,
-            company,
-          );
-          console.log(`  ✅ AI headline: "${headline.substring(0, 60)}..."`);
-          const article = await storage.createArticle({
-            newsletterId: newsletter.id,
-            headline,
-            summary,
-            sourceUrl: newsItem.url,
-            sourceName: newsItem.source,
-            publishedAt: newsItem.publishedAt,
-          });
-          allArticles.push(article);
-        } catch (error) {
-          console.error(`  ❌ Error generating summary:`, error);
-        }
-      }
-    }
+    const allArticles = (
+      await Promise.all(
+        companyNewsMap.flatMap(({ company, items }) =>
+          items.map((newsItem, j) =>
+            limit(async () => {
+              console.log(
+                `  Article ${j + 1} for ${company}: "${newsItem.title.substring(0, 60)}..."`,
+              );
+              try {
+                const { headline, summary } = await generateNewsSummary(
+                  newsItem.text,
+                  company,
+                );
+                console.log(
+                  `  ✅ AI headline: "${headline.substring(0, 60)}..."`,
+                );
+                const article = await storage.createArticle({
+                  newsletterId: newsletter.id,
+                  headline,
+                  summary,
+                  sourceUrl: newsItem.url,
+                  sourceName: newsItem.source,
+                  publishedAt: newsItem.publishedAt,
+                });
+                return article;
+              } catch (error) {
+                console.error(
+                  `  ❌ Error generating summary for "${newsItem.title}":`,
+                  error,
+                );
+                return null;
+              }
+            }),
+          ),
+        ),
+      )
+    ).filter(Boolean);
 
     console.log(`\n========== NEWSLETTER GENERATION COMPLETE ==========`);
     console.log(

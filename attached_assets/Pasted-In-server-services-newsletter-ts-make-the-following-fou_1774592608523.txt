@@ -1,0 +1,13 @@
+In server/services/newsletter.ts make the following four changes:
+1. Install rss-parser
+Install rss-parser package.
+2. Replace all scrapers with Google News RSS
+Delete functions scrapePaymentsJournal, scrapePaymentsDive, scrapeThePaypers and the NEWS_SOURCES array entirely. Create one async function fetchRSSArticles(company: string): Promise<NewsItem[]> that builds URL https://news.google.com/rss/search?q={company}+payments, fetches using rss-parser with 10 second timeout, maps each item to the existing NewsItem interface: title from item.title, text from item.contentSnippet || item.content || item.title, url from item.link, source from item.source?.title || "Google News", publishedAt from new Date(item.pubDate). Returns top 10 items. On any error logs and returns empty array.
+3. Update fetchNewsForCompany
+Replace the entire body of fetchNewsForCompany with a call to fetchRSSArticles(company) only — no scrapers, no NEWS_SOURCES loop. Pass the returned articles through the existing pipeline unchanged: filterRelevantArticles → removeDuplicates → scoreArticlesWithAI → slice(0, 5). Keep all logging.
+4. Replace removeDuplicates with O(n) hash set
+Delete levenshteinDistance and calculateSimilarity entirely. Rewrite removeDuplicates using two Set objects — urlSet for exact URL matches and fingerprintSet for near-duplicate titles. Generate fingerprint by: lowercasing title, removing stop words (the, a, an, in, of, for, to, is, and, or, with, on, at, by), splitting into words, taking 3 longest words, sorting alphabetically, joining with hyphen. Discard article if either set already contains its URL or fingerprint. Otherwise add to both sets and keep.
+5. Fix sequential AI summarisation
+Replace the nested for loops calling generateNewsSummary with Promise.all using existing pLimit(3). Use companyNewsMap.flatMap to flatten all articles, map each to limit(async () => { ... }) containing generateNewsSummary and storage.createArticle. Wrap each in individual try/catch. Assign results to allArticles.
+Do not touch scheduler, routes, email, PDF, or database schema. Do not restore files from git. Run rm -rf dist && npm run build && npm run start. Reply only with: files changed, one line summary per change, build result. No explanations.
+
