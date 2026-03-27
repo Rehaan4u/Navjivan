@@ -12,22 +12,57 @@ interface NewsItem {
   publishedAt: Date;
 }
 
+const CURATED_RSS_FEEDS = [
+  { name: "Finextra Payments",        url: "https://www.finextra.com/rss/channel.aspx?channel=payments" },
+  { name: "Finextra Regulation",      url: "https://www.finextra.com/rss/channel.aspx?channel=regulation" },
+  { name: "Finextra Crypto",          url: "https://www.finextra.com/rss/channel.aspx?channel=crypto" },
+  { name: "Finextra Security",        url: "https://www.finextra.com/rss/channel.aspx?channel=security" },
+  { name: "PaymentsJournal Podcast",  url: "https://www.paymentsjournal.com/category/the-paymentsjournal-podcast/feed/" },
+  { name: "The Finanser",             url: "https://thefinanser.com/feed" },
+  { name: "Fintech Brainfood",        url: "https://www.fintechbrainfood.com/feed" },
+  { name: "Glenbrook Payments on Fire", url: "https://glenbrook.com/payments_on_fire/feed/" },
+  { name: "Tearsheet Podcast",        url: "https://tearsheet.co/podcasts/feed/" },
+  { name: "11:FS Podcast",            url: "https://www.11fs.com/feed/podcast/" },
+  { name: "Visa News",                url: "https://usa.visa.com/about-visa/newsroom.rss" },
+  { name: "Mastercard Newsroom",      url: "https://newsroom.mastercard.com/feed/" },
+  { name: "Stripe Blog",              url: "https://stripe.com/blog/feed.rss" },
+  { name: "Adyen Blog",               url: "https://www.adyen.com/knowledge-hub/rss.xml" },
+  { name: "PayPal Newsroom",          url: "https://newsroom.paypal-corp.com/feed" },
+  { name: "Nacha Payments",           url: "https://www.nacha.org/news-feed.xml" },
+];
+
 async function fetchRSSArticles(company: string): Promise<NewsItem[]> {
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(company + " payments")}`;
   const parser = new Parser({ timeout: 10000 });
-  try {
-    const feed = await parser.parseURL(url);
-    return (feed.items || []).map((item) => ({
-      title: item.title || "",
-      text: item.contentSnippet || item.content || item.title || "",
-      url: item.link || "",
-      source: (item as any).source?._ || item.creator || "Google News",
-      publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
-    }));
-  } catch (error) {
-    console.error(`Error fetching RSS for ${company}:`, error);
-    return [];
-  }
+  const limit = pLimit(5);
+
+  const fetchFeed = async (url: string, sourceName: string): Promise<NewsItem[]> => {
+    try {
+      const feed = await parser.parseURL(url);
+      return (feed.items || []).map((item) => ({
+        title: item.title || "",
+        text: item.contentSnippet || item.content || item.title || "",
+        url: item.link || "",
+        source: sourceName,
+        publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+      }));
+    } catch (error) {
+      console.error(`Error fetching RSS from ${sourceName}:`, error);
+      return [];
+    }
+  };
+
+  const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(company + " payments")}`;
+
+  const allFeeds = [
+    { name: "Google News", url: googleNewsUrl },
+    ...CURATED_RSS_FEEDS,
+  ];
+
+  const results = await Promise.all(
+    allFeeds.map(({ url, name }) => limit(() => fetchFeed(url, name))),
+  );
+
+  return results.flat();
 }
 
 const STOP_WORDS = new Set([
