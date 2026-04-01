@@ -1,0 +1,7 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0KEmail service: Using SMTP at smtp.gmail.com
+✅ Newsletter scheduler started (runs daily at 9:00 AM IST)
+7:21:31 AM [express] serving on port 5000

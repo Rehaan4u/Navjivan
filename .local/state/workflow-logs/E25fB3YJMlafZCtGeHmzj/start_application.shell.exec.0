@@ -1,0 +1,15 @@
+[1G[0K⠙[1G[0K
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K⠙[1G[0KEmail service: Using SMTP at smtp.gmail.com
+✅ Newsletter scheduler started (runs daily at 9:00 AM IST)
+10:49:22 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 17 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+10:49:31 AM [express] GET /api/auth/user 304 in 335ms :: {"id":"49268814","email":"pujari.g@gmail.com…
+10:49:32 AM [express] GET /api/newsletters 304 in 13ms :: [{"id":"acd45fc4-b9cb-406e-aeb1-279af1aa64f…
+10:49:32 AM [express] GET /api/subscriptions 304 in 21ms :: {"id":"59cfc138-33b9-4086-a542-cd04390c17…
