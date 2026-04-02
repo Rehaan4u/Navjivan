@@ -25,7 +25,9 @@ function Router() {
   return (
     <Switch>
       {!isAuthenticated ? (
-        <Route path="/" component={Login} />
+        //Re-routing in such a way that we login directly to Dashboard
+        // <Route path="/" component={Login} />
+        <Route path="/" component={Dashboard} />
       ) : (
         <>
           <Route path="/" component={Dashboard} />
