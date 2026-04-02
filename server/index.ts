@@ -76,11 +76,14 @@ app.use((req, res, next) => {
   startScheduler();
 
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  // server.listen({
+  //   port,
+  //   host: "0.0.0.0",
+  //   reusePort: true,
+  // }, () => {
+  //   log(`serving on port ${port}`);
+  // });
+  server.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
+});
 })();

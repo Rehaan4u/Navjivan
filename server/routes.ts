@@ -13,16 +13,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //await setupAuth(app);
 
   // Auth routes
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  //   try {
+  //     const userId = req.user.claims.sub;
+  //     const user = await storage.getUser(userId);
+  //     res.json(user);
+  //   } catch (error) {
+  //     console.error("Error fetching user:", error);
+  //     res.status(500).json({ message: "Failed to fetch user" });
+  //   }
+  // });
+
+  //Fake user id 
+  app.use((req: any, res, next) => {
+  req.user = {
+    id: "test-user-1",
+    email: "test@example.com"
+  };
+  next();
+});
 
   // Subscription routes
   app.get("/api/subscriptions", isAuthenticated, async (req: any, res) => {
