@@ -382,10 +382,20 @@ export async function setupAuth(app: Express) {
       }
     )
   );
-
+// old way 
+  // passport.serializeUser((user: any, done) => {
+  //   done(null, user);
+  // });
+  //New Way 
   passport.serializeUser((user: any, done) => {
-    done(null, user);
+  done(null, {
+    claims: {
+      sub: user.id,
+    },
+    email: user.email,
+    firstName: user.firstName,
   });
+});
 
   passport.deserializeUser((user: any, done) => {
     done(null, user);

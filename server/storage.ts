@@ -20,7 +20,8 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-
+  //this was not getting exported as it was outside the Interface
+  getUserByEmail(email: string): Promise<User | undefined>;
   // Subscription operations
   getSubscription(userId: string): Promise<Subscription | undefined>;
   getSubscriptionById(subscriptionId: string): Promise<Subscription | undefined>;
@@ -91,6 +92,12 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+  //Things you get after google authorize
+  async getUserByEmail(email: string) {
+  return await db.query.users.findFirst({
+    where: (users, { eq }) => eq(users.email, email),
+  });
+}
 
   // Subscription operations
   async getSubscription(userId: string): Promise<Subscription | undefined> {

@@ -244,14 +244,14 @@ import { z } from "zod";
 export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mock user for local dev — attached to every request
-  app.use((req: any, res, next) => {
-    req.user = {
-      claims: { sub: "local-dev-user-1" },
-      email: "rehaan@test.com",
-      firstName: "Rehaan",
-    };
-    next();
-  });
+  // app.use((req: any, res, next) => {
+  //   req.user = {
+  //     claims: { sub: "local-dev-user-1" },
+  //     email: "rehaan@test.com",
+  //     firstName: "Rehaan",
+  //   };
+  //   next();
+  // });
 
   // Auth route
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
@@ -282,6 +282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subscriptions", isAuthenticated, async (req: any, res) => {
     try {
+      console.log("USER:", req.user);   // 👈 ADD THIS
+      console.log("BODY:", req.body);   // 👈 ADD THIS
       const userId = req.user.claims.sub;
       const validatedData = insertSubscriptionSchema.parse(req.body);
 
@@ -317,6 +319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create subscription" });
     }
   });
+
+  
 
   app.put("/api/subscriptions", isAuthenticated, async (req: any, res) => {
     try {
