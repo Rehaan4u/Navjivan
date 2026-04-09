@@ -1,5 +1,7 @@
 import { storage } from "../storage";
-import { generateNewsSummary, scoreArticleRelevance } from "./openai";
+// import { generateNewsSummary, scoreArticleRelevance } from "./openai";
+//Replaced openai with groq
+import { generateNewsSummary, scoreArticleRelevance } from "../groq";
 import Parser from "rss-parser";
 import pLimit from "p-limit";
 import { createHash } from "crypto";
