@@ -1,5 +1,7 @@
 import { storage } from "../storage";
-// import { generateNewsSummary, scoreArticleRelevance } from "./openai";
+// So that in the log we could see which source is providing content 
+import { recordFeedHealth, printFeedHealthSummary } from "./feedHealth";
+
 //Replaced openai with groq
 import { generateNewsSummary, scoreArticleRelevance } from "../groq";
 import Parser from "rss-parser";
@@ -37,21 +39,44 @@ async function fetchRSSArticles(company: string): Promise<NewsItem[]> {
   const parser = new Parser({ timeout: 10000 });
   const limit = pLimit(5);
 
+  // const fetchFeed = async (url: string, sourceName: string): Promise<NewsItem[]> => {
+  //   try {
+  //     const feed = await parser.parseURL(url);
+  //     return (feed.items || []).map((item) => ({
+  //       title: item.title || "",
+  //       text: item.contentSnippet || item.content || item.title || "",
+  //       url: item.link || "",
+  //       source: sourceName,
+  //       publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+  //     }));
+  //   } catch (error) {
+  //     console.error(`Error fetching RSS from ${sourceName}:`, error);
+  //     return [];
+  //   }
+  // };
+
+  //UPDATED THE fetchFeed function so that in logs we could see the health of sorces too
   const fetchFeed = async (url: string, sourceName: string): Promise<NewsItem[]> => {
-    try {
-      const feed = await parser.parseURL(url);
-      return (feed.items || []).map((item) => ({
-        title: item.title || "",
-        text: item.contentSnippet || item.content || item.title || "",
-        url: item.link || "",
-        source: sourceName,
-        publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
-      }));
-    } catch (error) {
-      console.error(`Error fetching RSS from ${sourceName}:`, error);
-      return [];
-    }
-  };
+  try {
+    const feed = await parser.parseURL(url);
+    const items = (feed.items || []).map((item) => ({
+      title: item.title || "",
+      text: item.contentSnippet || item.content || item.title || "",
+      url: item.link || "",
+      source: sourceName,
+      publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+    }));
+
+    // ✅ Record health after successful fetch
+    recordFeedHealth(sourceName, items.length);
+    return items;
+  } catch (error: any) {
+    // ✅ Record health on error
+    recordFeedHealth(sourceName, 0, error?.message || "Unknown error");
+    console.error(`Error fetching RSS from ${sourceName}:`, error);
+    return [];
+  }
+};
 
   const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(company + " payments")}`;
 
@@ -64,7 +89,11 @@ async function fetchRSSArticles(company: string): Promise<NewsItem[]> {
     allFeeds.map(({ url, name }) => limit(() => fetchFeed(url, name))),
   );
 
-  return results.flat();
+  // return results.flat();
+  //Generates the summary of working resources
+  const allArticles = results.flat();
+  printFeedHealthSummary(); // ✅ prints full summary after all feeds attempted
+  return allArticles;
 }
 
 const STOP_WORDS = new Set([
