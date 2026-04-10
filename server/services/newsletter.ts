@@ -1,4 +1,6 @@
 import { storage } from "../storage";
+// Call the scraper fro googelRSS
+import { scrapeArticleContent } from "./scraper";
 // So that in the log we could see which source is providing content 
 import { recordFeedHealth, printFeedHealthSummary } from "./feedHealth";
 
@@ -222,9 +224,29 @@ function computeContentHash(urls: string[]): string {
 async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
   console.log(`Fetching RSS articles for ${company}...`);
 
-  const rawArticles = await fetchRSSArticles(company);
+  const allArticles = await fetchRSSArticles(company);
+  //Scraping logic
+  console.log(`[SCRAPER] Enriching Google News articles with full content...`);
+const enrichedArticles = await Promise.all(
+  allArticles.map(async (article) => {
+    // Only scrape Google News articles that have no real text content
+    if (
+      article.source === "Google News" &&
+      (!article.text || article.text === article.title)
+    ) {
+      const scrapedText = await scrapeArticleContent(article.url);
+      return {
+        ...article,
+        text: scrapedText || article.title, // fallback to title if scraping fails
+      };
+    }
+    return article; // non-Google News articles already have content
+  })
+);
+// Replace allArticles with enrichedArticles going forward
+// const allArticles = enrichedArticles;
 
-  if (rawArticles.length === 0) {
+  if (allArticles.length === 0) {
     console.log(`No articles found for ${company}, using fallback`);
     return [
       {
@@ -237,9 +259,9 @@ async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
     ];
   }
 
-  console.log(`Found ${rawArticles.length} raw articles for ${company}`);
+  console.log(`Found ${allArticles.length} raw articles for ${company}`);
 
-  const keywordFiltered = filterRelevantArticles(rawArticles, company);
+  const keywordFiltered = filterRelevantArticles(allArticles, company);
   console.log(`${keywordFiltered.length} articles after keyword filtering`);
 
   const deduplicated = removeDuplicates(keywordFiltered);
