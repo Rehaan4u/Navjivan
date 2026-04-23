@@ -1,23 +1,37 @@
 import { storage } from "../storage";
-// Call the scraper fro googelRSS
+import type { Article } from "@shared/schema";
 import { scrapeArticleContent } from "./scraper";
-// So that in the log we could see which source is providing content 
 import { recordFeedHealth, printFeedHealthSummary } from "./feedHealth";
-
-//Replaced openai with groq
 import { generateNewsSummary, scoreArticleRelevance } from "../groq";
 import Parser from "rss-parser";
 import pLimit from "p-limit";
 import { createHash } from "crypto";
 
+// ============================
+// INTERFACE
+// ============================
 interface NewsItem {
   title: string;
   text: string;
   url: string;
   source: string;
   publishedAt: Date;
+  fetchMethod: "rss" | "scraped"; // ✅ track how content was obtained
 }
 
+// ============================
+// CONSTANTS
+// ============================
+const MAX_ARTICLES_PER_SOURCE = 50;     // max articles taken from any one source
+const BATCH_SIZE = 5;                    // score 5 articles at a time
+const RELEVANCE_THRESHOLD = 70;          // minimum score to pass
+const BATCH_PASS_THRESHOLD = 3;         // if 3+ pass in a batch, stop scoring this source
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+// ============================
+// RSS SOURCES
+// ✅ Removed all dead sources (404s and invalid XML)
+// ============================
 const CURATED_RSS_FEEDS = [
   { name: "Finextra Payments",        url: "https://www.finextra.com/rss/channel.aspx?channel=payments" },
   { name: "Finextra Regulation",      url: "https://www.finextra.com/rss/channel.aspx?channel=regulation" },
@@ -25,79 +39,37 @@ const CURATED_RSS_FEEDS = [
   { name: "Finextra Security",        url: "https://www.finextra.com/rss/channel.aspx?channel=security" },
   { name: "PaymentsJournal Podcast",  url: "https://www.paymentsjournal.com/category/the-paymentsjournal-podcast/feed/" },
   { name: "The Finanser",             url: "https://thefinanser.com/feed" },
-  { name: "Fintech Brainfood",        url: "https://www.fintechbrainfood.com/feed" },
-  { name: "Glenbrook Payments on Fire", url: "https://glenbrook.com/payments_on_fire/feed/" },
   { name: "Tearsheet Podcast",        url: "https://tearsheet.co/podcasts/feed/" },
-  { name: "11:FS Podcast",            url: "https://www.11fs.com/feed/podcast/" },
-  { name: "Visa News",                url: "https://usa.visa.com/about-visa/newsroom.rss" },
-  { name: "Mastercard Newsroom",      url: "https://newsroom.mastercard.com/feed/" },
   { name: "Stripe Blog",              url: "https://stripe.com/blog/feed.rss" },
   { name: "Adyen Blog",               url: "https://www.adyen.com/knowledge-hub/rss.xml" },
-  { name: "PayPal Newsroom",          url: "https://newsroom.paypal-corp.com/feed" },
-  { name: "Nacha Payments",           url: "https://www.nacha.org/news-feed.xml" },
+  // ❌ REMOVED: Fintech Brainfood (404)
+  // ❌ REMOVED: Glenbrook Payments on Fire (404)
+  // ❌ REMOVED: 11:FS Podcast (404)
+  // ❌ REMOVED: Visa News (404)
+  // ❌ REMOVED: Mastercard Newsroom (404)
+  // ❌ REMOVED: Nacha Payments (404)
+  // ❌ REMOVED: PayPal Newsroom (invalid XML)
 ];
 
-async function fetchRSSArticles(company: string): Promise<NewsItem[]> {
-  const parser = new Parser({ timeout: 10000 });
-  const limit = pLimit(5);
-
-  // const fetchFeed = async (url: string, sourceName: string): Promise<NewsItem[]> => {
-  //   try {
-  //     const feed = await parser.parseURL(url);
-  //     return (feed.items || []).map((item) => ({
-  //       title: item.title || "",
-  //       text: item.contentSnippet || item.content || item.title || "",
-  //       url: item.link || "",
-  //       source: sourceName,
-  //       publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
-  //     }));
-  //   } catch (error) {
-  //     console.error(`Error fetching RSS from ${sourceName}:`, error);
-  //     return [];
-  //   }
-  // };
-
-  //UPDATED THE fetchFeed function so that in logs we could see the health of sorces too
-  const fetchFeed = async (url: string, sourceName: string): Promise<NewsItem[]> => {
-  try {
-    const feed = await parser.parseURL(url);
-    const items = (feed.items || []).map((item) => ({
-      title: item.title || "",
-      text: item.contentSnippet || item.content || item.title || "",
-      url: item.link || "",
-      source: sourceName,
-      publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
-    }));
-
-    // ✅ Record health after successful fetch
-    recordFeedHealth(sourceName, items.length);
-    return items;
-  } catch (error: any) {
-    // ✅ Record health on error
-    recordFeedHealth(sourceName, 0, error?.message || "Unknown error");
-    console.error(`Error fetching RSS from ${sourceName}:`, error);
-    return [];
-  }
-};
-
-  const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(company + " payments")}`;
-
-  const allFeeds = [
-    { name: "Google News", url: googleNewsUrl },
-    ...CURATED_RSS_FEEDS,
-  ];
-
-  const results = await Promise.all(
-    allFeeds.map(({ url, name }) => limit(() => fetchFeed(url, name))),
-  );
-
-  // return results.flat();
-  //Generates the summary of working resources
-  const allArticles = results.flat();
-  printFeedHealthSummary(); // ✅ prints full summary after all feeds attempted
-  return allArticles;
+// ============================
+// UTILITY: ONE WEEK FILTER
+// ✅ Only keep articles published in the last 7 days
+// ============================
+function isWithinOneWeek(date: Date): boolean {
+  return new Date().getTime() - date.getTime() <= ONE_WEEK_MS;
 }
 
+// ============================
+// UTILITY: CONTENT HASH
+// ============================
+function computeContentHash(urls: string[]): string {
+  const sorted = [...urls].sort().join("|");
+  return createHash("md5").update(sorted).digest("hex");
+}
+
+// ============================
+// UTILITY: STOP WORDS + FINGERPRINT
+// ============================
 const STOP_WORDS = new Set([
   "the", "a", "an", "in", "of", "for", "to", "is",
   "and", "or", "with", "on", "at", "by",
@@ -116,6 +88,104 @@ function titleFingerprint(title: string): string {
     .join("-");
 }
 
+// ============================
+// STEP 1A: FETCH ONE CURATED RSS FEED
+// ✅ Records health, filters to 1 week, caps at 50
+// ============================
+async function fetchSingleFeed(
+  url: string,
+  sourceName: string,
+  parser: Parser
+): Promise<NewsItem[]> {
+  try {
+    const feed = await parser.parseURL(url);
+    const items = (feed.items || [])
+      .map((item) => ({
+        title: item.title || "",
+        text: item.contentSnippet || item.content || item.title || "",
+        url: item.link || "",
+        source: sourceName,
+        publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+        fetchMethod: "rss" as const,
+      }))
+      .filter((item) => isWithinOneWeek(item.publishedAt)) // ✅ last 7 days only
+      .slice(0, MAX_ARTICLES_PER_SOURCE);                  // ✅ max 50 per source
+
+    recordFeedHealth(sourceName, items.length);
+    console.log(`[RSS] ${sourceName}: ${items.length} articles (within 1 week)`);
+    return items;
+  } catch (error: any) {
+    recordFeedHealth(sourceName, 0, error?.message || "Unknown error");
+    console.error(`[RSS] ❌ ${sourceName} failed: ${error?.message}`);
+    return [];
+  }
+}
+
+// ============================
+// STEP 1B: FETCH GOOGLE RSS + SCRAPE CONTENT
+// ✅ Google RSS last — only if curated feeds don't have enough
+// ✅ Scrapes full article body from each URL
+// ✅ Marks articles as "scraped" so logs show fetch method
+// ============================
+async function fetchAndScrapeGoogleNews(
+  company: string,
+  parser: Parser
+): Promise<NewsItem[]> {
+  const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(
+    company + " payments"
+  )}`;
+
+  try {
+    const feed = await parser.parseURL(googleNewsUrl);
+    const recentItems = (feed.items || [])
+      .map((item) => ({
+        title: item.title || "",
+        text: item.contentSnippet || item.content || item.title || "",
+        url: item.link || "",
+        source: "Google News",
+        publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+        fetchMethod: "rss" as const,
+      }))
+      .filter((item) => isWithinOneWeek(item.publishedAt))
+      .slice(0, MAX_ARTICLES_PER_SOURCE);
+
+    console.log(
+      `[Google RSS] ${recentItems.length} articles for "${company}" (within 1 week)`
+    );
+
+    // ✅ Scrape full content for every Google News article
+    // Google RSS only gives title + URL, so we need to scrape the actual page
+    const enriched = await Promise.all(
+      recentItems.map(async (article) => {
+        if (!article.text || article.text === article.title) {
+          const scrapedText = await scrapeArticleContent(article.url);
+          if (scrapedText) {
+            console.log(
+              `[SCRAPER] ✅ "${article.title.substring(0, 50)}" — ${scrapedText.length} chars`
+            );
+            return {
+              ...article,
+              text: scrapedText,
+              fetchMethod: "scraped" as const, // ✅ marks as scraped not RSS
+            };
+          }
+        }
+        return article;
+      })
+    );
+
+    recordFeedHealth("Google News", enriched.length);
+    return enriched;
+  } catch (error: any) {
+    recordFeedHealth("Google News", 0, error?.message);
+    console.error(`[Google RSS] ❌ Failed: ${error?.message}`);
+    return [];
+  }
+}
+
+// ============================
+// STEP 2: REMOVE DUPLICATES
+// ============================
 function removeDuplicates(articles: NewsItem[]): NewsItem[] {
   const urlSet = new Set<string>();
   const fingerprintSet = new Set<string>();
@@ -124,7 +194,7 @@ function removeDuplicates(articles: NewsItem[]): NewsItem[] {
   for (const article of articles) {
     const fp = titleFingerprint(article.title);
     if (urlSet.has(article.url) || fingerprintSet.has(fp)) {
-      console.log(`Duplicate removed: "${article.title}"`);
+      console.log(`[DEDUP] Removed: "${article.title}"`);
       continue;
     }
     urlSet.add(article.url);
@@ -132,13 +202,18 @@ function removeDuplicates(articles: NewsItem[]): NewsItem[] {
     unique.push(article);
   }
 
-  console.log(`Removed ${articles.length - unique.length} duplicate articles`);
+  console.log(
+    `[DEDUP] ${unique.length} unique (removed ${articles.length - unique.length})`
+  );
   return unique;
 }
 
+// ============================
+// STEP 3: KEYWORD FILTER
+// ============================
 function filterRelevantArticles(
   articles: NewsItem[],
-  company: string,
+  company: string
 ): NewsItem[] {
   const PAYMENTS_KEYWORDS = [
     "payment", "payments", "fintech", "financial", "transaction",
@@ -153,128 +228,279 @@ function filterRelevantArticles(
 
   return articles.filter((article) => {
     const combinedText = `${article.title} ${article.text}`.toLowerCase();
-    const companyLower = company.toLowerCase();
-    const mentionsCompany = combinedText.includes(companyLower);
-    const hasPaymentsKeyword = PAYMENTS_KEYWORDS.some((keyword) =>
-      combinedText.includes(keyword.toLowerCase()),
+    const mentionsCompany = combinedText.includes(company.toLowerCase());
+    const hasKeyword = PAYMENTS_KEYWORDS.some((kw) =>
+      combinedText.includes(kw.toLowerCase())
     );
-    const isRelevant = mentionsCompany || hasPaymentsKeyword;
+    const isRelevant = mentionsCompany || hasKeyword;
     if (!isRelevant) {
-      console.log(`Filtered out irrelevant article: "${article.title}"`);
+      console.log(`[FILTER] Rejected: "${article.title}"`);
     }
     return isRelevant;
   });
 }
 
-async function scoreArticlesWithAI(
+// ============================
+// STEP 4: BATCH SCORING
+// ✅ Scores ALL articles but in batches of 5
+// ✅ If 3+ pass in a batch → stop early for this source (enough found)
+// ✅ If 0 pass in a batch → try next 5 from same source
+// ✅ Company name must appear in article to pass
+// ============================
+async function scoreArticlesInBatches(
   articles: NewsItem[],
-  company: string,
+  company: string
 ): Promise<Array<NewsItem & { relevanceScore: number }>> {
-  const RELEVANCE_THRESHOLD = 60;
+  const passed: Array<NewsItem & { relevanceScore: number }> = [];
   const limit = pLimit(3);
 
-  const scoredArticles = await Promise.all(
-    articles.map((article) =>
-      limit(async () => {
-        const score = await scoreArticleRelevance(
-          article.title,
-          article.text,
-          company,
-        );
-        console.log(
-          `AI scored "${article.title.substring(0, 50)}..." → ${score}/100`,
-        );
-        return { ...article, relevanceScore: score };
-      }),
-    ),
-  );
-
-  const filtered = scoredArticles
-    .filter((article) => article.relevanceScore >= RELEVANCE_THRESHOLD)
-    .sort((a, b) => b.relevanceScore - a.relevanceScore);
-
   console.log(
-    `${filtered.length}/${scoredArticles.length} articles passed AI relevance threshold (≥${RELEVANCE_THRESHOLD})`,
+    `[SCORING] ${articles.length} articles to score in batches of ${BATCH_SIZE}`
   );
 
-  return filtered;
-}
+  for (let i = 0; i < articles.length; i += BATCH_SIZE) {
+    const batch = articles.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
 
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  label: string,
-): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`${label} timed out after ${ms}ms`)),
-        ms,
-      ),
-    ),
-  ]);
-}
+    console.log(
+      `[SCORING] Batch ${batchNum}: scoring ${batch.length} articles [${batch[0]?.source}...]`
+    );
 
-function computeContentHash(urls: string[]): string {
-  const sorted = [...urls].sort().join("|");
-  return createHash("md5").update(sorted).digest("hex");
-}
+    // Score entire batch concurrently (up to 3 at a time)
+    const scoredBatch = await Promise.all(
+      batch.map((article) =>
+        limit(async () => {
+          const score = await scoreArticleRelevance(
+            article.title,
+            article.text,
+            company
+          );
+          console.log(
+            `[SCORING] [${article.fetchMethod}] "${article.title.substring(0, 50)}" → ${score}/100`
+          );
+          return { ...article, relevanceScore: score };
+        })
+      )
+    );
 
-async function fetchNewsForCompany(company: string): Promise<NewsItem[]> {
-  console.log(`Fetching RSS articles for ${company}...`);
+    // ✅ Must score ≥ 70 AND mention company name to pass
+    const batchPassed = scoredBatch.filter((a) => {
+      if (a.relevanceScore < RELEVANCE_THRESHOLD) return false;
+      const mentionsCompany = `${a.title} ${a.text}`
+        .toLowerCase()
+        .includes(company.toLowerCase());
+      if (!mentionsCompany) {
+        console.log(
+          `[SCORING] Rejected (no company mention): "${a.title.substring(0, 50)}"`
+        );
+      }
+      return mentionsCompany;
+    });
 
-  const allArticles = await fetchRSSArticles(company);
-  //Scraping logic
-  console.log(`[SCRAPER] Enriching Google News articles with full content...`);
-const enrichedArticles = await Promise.all(
-  allArticles.map(async (article) => {
-    // Only scrape Google News articles that have no real text content
-    if (
-      article.source === "Google News" &&
-      (!article.text || article.text === article.title)
-    ) {
-      const scrapedText = await scrapeArticleContent(article.url);
-      return {
-        ...article,
-        text: scrapedText || article.title, // fallback to title if scraping fails
-      };
+    console.log(
+      `[SCORING] Batch ${batchNum} result: ${batchPassed.length}/${batch.length} passed`
+    );
+
+    passed.push(...batchPassed);
+
+    // ✅ 3+ passed → we have enough from this source, stop scoring it
+    if (batchPassed.length >= BATCH_PASS_THRESHOLD) {
+      console.log(
+        `[SCORING] ✅ ${batchPassed.length} passed in batch ${batchNum} — stopping early`
+      );
+      break;
     }
-    return article; // non-Google News articles already have content
-  })
-);
-// Replace allArticles with enrichedArticles going forward
-// const allArticles = enrichedArticles;
 
-  if (allArticles.length === 0) {
-    console.log(`No articles found for ${company}, using fallback`);
-    return [
-      {
-        title: `${company} in the Payments Industry`,
-        text: `Recent developments and news about ${company} in the payments and financial technology sector. The company continues to be a significant player in the evolving digital payments landscape.`,
-        url: `https://www.google.com/search?q=${encodeURIComponent(company + " payments news")}`,
-        source: "Industry News",
-        publishedAt: new Date(),
-      },
-    ];
+    // ✅ 0 passed → try next batch from same source
+    if (batchPassed.length === 0 && i + BATCH_SIZE < articles.length) {
+      console.log(
+        `[SCORING] ⚠️  0 passed in batch ${batchNum} — trying next batch...`
+      );
+      // continue loop naturally
+    }
   }
 
-  console.log(`Found ${allArticles.length} raw articles for ${company}`);
-
-  const keywordFiltered = filterRelevantArticles(allArticles, company);
-  console.log(`${keywordFiltered.length} articles after keyword filtering`);
-
-  const deduplicated = removeDuplicates(keywordFiltered);
-  console.log(`${deduplicated.length} unique articles after deduplication`);
-
-  const aiScored = await scoreArticlesWithAI(deduplicated, company);
-  console.log(`${aiScored.length} articles after AI relevance scoring`);
-
-  return aiScored.slice(0, 5);
+  return passed.sort((a, b) => b.relevanceScore - a.relevanceScore);
 }
 
+// ============================
+// STEP 5: CAP TOP N PER SOURCE
+// ✅ Articles already sorted by score desc before this runs
+// ✅ If two articles have same score, first one wins (already correct by sort stability)
+// ============================
+function capArticlesPerSource(
+  articles: Array<NewsItem & { relevanceScore: number }>,
+  maxPerSource: number = 2
+): Array<NewsItem & { relevanceScore: number }> {
+  const sourceCount = new Map<string, number>();
+  const result: Array<NewsItem & { relevanceScore: number }> = [];
+
+  for (const article of articles) {
+    const count = sourceCount.get(article.source) || 0;
+    if (count < maxPerSource) {
+      result.push(article);
+      sourceCount.set(article.source, count + 1);
+    } else {
+      console.log(
+        `[CAP] Skipped (source limit): "${article.title.substring(0, 50)}" from ${article.source}`
+      );
+    }
+  }
+
+  console.log(
+    `[CAP] ${result.length} articles after capping ${maxPerSource} per source (was ${articles.length})`
+  );
+  return result;
+}
+
+// ============================
+// DYNAMIC ARTICLE LIMIT
+// ✅ Always 6 total articles regardless of company count
+// ============================
+function getArticlesPerCompany(companyCount: number): number {
+  if (companyCount === 1) return 6;
+  if (companyCount === 2) return 3;
+  if (companyCount === 3) return 2;
+  return Math.max(1, Math.floor(6 / companyCount));
+}
+
+// ============================
+// FILTER ALREADY SENT ARTICLES
+// ✅ Prevents same article appearing in multiple newsletters
+// ============================
+async function filterAlreadySentArticles(
+  articles: NewsItem[],
+  subscriptionId: string
+): Promise<NewsItem[]> {
+  try {
+    const sentUrls = new Set<string>();
+
+    // ✅ storage only has getLastNewsletterBySubscription (returns one newsletter)
+    // so we use getUserNewsletters via userId is not available here,
+    // so we get the last newsletter and check its articles
+    const lastNewsletter = await storage.getLastNewsletterBySubscription(subscriptionId);
+
+    if (lastNewsletter) {
+      // ✅ correct method name from storage.ts
+      const prevArticles = await storage.getNewsletterArticles(lastNewsletter.id);
+      prevArticles.forEach((a: Article) => sentUrls.add(a.sourceUrl));
+      console.log(
+        `[SENT-FILTER] Found ${prevArticles.length} articles in last newsletter`
+      );
+    } else {
+      console.log(`[SENT-FILTER] No previous newsletter found — all articles are fresh`);
+    }
+
+    console.log(`[SENT-FILTER] ${sentUrls.size} URLs already sent`);
+
+    const fresh = articles.filter((article) => {
+      if (sentUrls.has(article.url)) {
+        console.log(
+          `[SENT-FILTER] Skipping already-sent: "${article.title.substring(0, 50)}"`
+        );
+        return false;
+      }
+      return true;
+    });
+
+    console.log(
+      `[SENT-FILTER] ${fresh.length}/${articles.length} articles are fresh`
+    );
+    return fresh;
+  } catch (error) {
+    console.error(`[SENT-FILTER] Error checking sent articles:`, error);
+    return articles; // safe fallback — never crash newsletter generation
+  }
+}
+
+// ============================
+// MAIN FETCH FUNCTION PER COMPANY
+// ✅ Curated RSS first → score → if not enough → Google RSS + scrape → score
+// ============================
+async function fetchNewsForCompany(
+  company: string,
+  articleLimit: number = 2
+): Promise<NewsItem[]> {
+  const parser = new Parser({ timeout: 10000 });
+  const fetchLimit = pLimit(5);
+
+  console.log(
+    `\n[FETCH] "${company}" — need ${articleLimit} articles`
+  );
+
+  // ============================
+  // STEP 1: Curated RSS feeds first
+  // These already have full text content so no scraping needed
+  // ============================
+  console.log(`[FETCH] Step 1: Fetching ${CURATED_RSS_FEEDS.length} curated RSS feeds...`);
+
+  const curatedResults = await Promise.all(
+    CURATED_RSS_FEEDS.map(({ url, name }) =>
+      fetchLimit(() => fetchSingleFeed(url, name, parser))
+    )
+  );
+
+  const curatedArticles = curatedResults.flat();
+  console.log(`[FETCH] Curated total: ${curatedArticles.length} raw articles`);
+
+  // Filter + deduplicate
+  const curatedFiltered = filterRelevantArticles(curatedArticles, company);
+  const curatedDeduped = removeDuplicates(curatedFiltered);
+
+  // Score in batches
+  const curatedScored = await scoreArticlesInBatches(curatedDeduped, company);
+  console.log(`[FETCH] ${curatedScored.length} curated articles passed scoring`);
+
+  // Print health summary after curated feeds
+  printFeedHealthSummary();
+
+  // ============================
+  // STEP 2: Google RSS + scraping
+  // Only fetch if curated feeds didn't give us enough articles
+  // ============================
+  let googleScored: Array<NewsItem & { relevanceScore: number }> = [];
+
+  if (curatedScored.length < articleLimit) {
+    console.log(
+      `[FETCH] Step 2: Only ${curatedScored.length}/${articleLimit} articles from curated — fetching Google RSS...`
+    );
+    const googleArticles = await fetchAndScrapeGoogleNews(company, parser);
+    const googleFiltered = filterRelevantArticles(googleArticles, company);
+    const googleDeduped = removeDuplicates(googleFiltered);
+    googleScored = await scoreArticlesInBatches(googleDeduped, company);
+    console.log(`[FETCH] ${googleScored.length} Google articles passed scoring`);
+  } else {
+    console.log(
+      `[FETCH] Step 2: Skipping Google RSS — curated feeds have enough (${curatedScored.length})`
+    );
+  }
+
+  // ============================
+  // STEP 3: Merge + cap + slice
+  // ============================
+  const allScored = [...curatedScored, ...googleScored].sort(
+    (a, b) => b.relevanceScore - a.relevanceScore
+  );
+
+  // Log RSS vs scraped breakdown
+  const rssCount = allScored.filter((a) => a.fetchMethod === "rss").length;
+  const scrapedCount = allScored.filter((a) => a.fetchMethod === "scraped").length;
+  console.log(
+    `[FETCH] ✅ Method breakdown: ${rssCount} via RSS | ${scrapedCount} via scraping`
+  );
+
+  const capped = capArticlesPerSource(allScored, 2);
+  const final = capped.slice(0, articleLimit);
+
+  console.log(`[FETCH] Final: ${final.length} articles for "${company}"`);
+  return final;
+}
+
+// ============================
+// GENERATE NEWSLETTER FOR ONE SUBSCRIPTION
+// ============================
 export async function generateNewsletterForSubscription(
-  subscriptionId: string,
+  subscriptionId: string
 ) {
   console.log(`\n========== STARTING NEWSLETTER GENERATION ==========`);
   console.log(`Subscription ID: ${subscriptionId}`);
@@ -291,20 +517,31 @@ export async function generateNewsletterForSubscription(
       return null;
     }
 
-    console.log(
-      `✅ Active subscription found for user: ${subscription.userId}`,
-    );
+    console.log(`✅ Active subscription for user: ${subscription.userId}`);
+
     const companies = subscription.companies
       .split(",")
       .map((c) => c.trim())
       .filter((c) => c.length > 0);
-    console.log(`📋 Companies: ${companies.join(", ")}`);
 
-    console.log(`\n🔍 Fetching news for all companies in parallel...`);
+    console.log(`📋 Companies (${companies.length}): ${companies.join(", ")}`);
+
+    // ✅ Dynamic article limit based on company count
+    const articleLimit = getArticlesPerCompany(companies.length);
+    console.log(
+      `📊 ${companies.length} companies × ${articleLimit} articles = ${
+        companies.length * articleLimit
+      } total articles`
+    );
+
+    console.log(`\n🔍 Fetching news for all companies...`);
     const companyNewsResults = await Promise.allSettled(
       companies.map((company) =>
-        fetchNewsForCompany(company).then((items) => ({ company, items })),
-      ),
+        fetchNewsForCompany(company, articleLimit).then((items) => ({
+          company,
+          items,
+        }))
+      )
     );
 
     const companyNewsMap: Array<{ company: string; items: NewsItem[] }> = [];
@@ -314,8 +551,16 @@ export async function generateNewsletterForSubscription(
       }
     }
 
+    // ✅ Filter out articles already sent to this subscription
+    for (const companyNews of companyNewsMap) {
+      companyNews.items = await filterAlreadySentArticles(
+        companyNews.items,
+        subscriptionId
+      );
+    }
+
     const allFetchedUrls = companyNewsMap.flatMap(({ items }) =>
-      items.map((i) => i.url),
+      items.map((i) => i.url)
     );
     const contentHash = computeContentHash(allFetchedUrls);
     console.log(`📋 Content hash: ${contentHash}`);
@@ -329,7 +574,7 @@ export async function generateNewsletterForSubscription(
     });
     console.log(`✅ Created newsletter ${newsletter.id}`);
 
-    console.log(`\n🤖 Starting AI summarization (parallel, concurrency 3)...`);
+    console.log(`\n🤖 Starting AI summarization (concurrency: 3)...`);
     const limit = pLimit(3);
 
     const allArticles = (
@@ -338,15 +583,15 @@ export async function generateNewsletterForSubscription(
           items.map((newsItem, j) =>
             limit(async () => {
               console.log(
-                `  Article ${j + 1} for ${company}: "${newsItem.title.substring(0, 60)}..."`,
+                `  [${newsItem.fetchMethod}] Article ${j + 1} for ${company}: "${newsItem.title.substring(0, 60)}"`
               );
               try {
                 const { headline, summary } = await generateNewsSummary(
                   newsItem.text,
-                  company,
+                  company
                 );
                 console.log(
-                  `  ✅ AI headline: "${headline.substring(0, 60)}..."`,
+                  `  ✅ Headline: "${headline.substring(0, 60)}"`
                 );
                 const article = await storage.createArticle({
                   newsletterId: newsletter.id,
@@ -359,21 +604,19 @@ export async function generateNewsletterForSubscription(
                 return article;
               } catch (error) {
                 console.error(
-                  `  ❌ Error generating summary for "${newsItem.title}":`,
-                  error,
+                  `  ❌ Summary failed for "${newsItem.title}":`,
+                  error
                 );
                 return null;
               }
-            }),
-          ),
-        ),
+            })
+          )
+        )
       )
     ).filter(Boolean);
 
     console.log(`\n========== NEWSLETTER GENERATION COMPLETE ==========`);
-    console.log(
-      `📊 Newsletter ${newsletter.id} — ${allArticles.length} articles`,
-    );
+    console.log(`📊 Newsletter ${newsletter.id} — ${allArticles.length} articles`);
     console.log(`✉️  Ready for delivery to user ${subscription.userId}`);
 
     return newsletter;
@@ -383,6 +626,10 @@ export async function generateNewsletterForSubscription(
   }
 }
 
+// ============================
+// GENERATE FOR ALL SUBSCRIPTIONS
+// ✅ 3 second delay between users to avoid rate limits
+// ============================
 export async function generateNewslettersForAllSubscriptions() {
   try {
     const subscriptions = await storage.getAllActiveSubscriptions();
@@ -391,6 +638,8 @@ export async function generateNewslettersForAllSubscriptions() {
     for (const subscription of subscriptions) {
       try {
         await generateNewsletterForSubscription(subscription.id);
+        // ✅ Stagger between users to avoid Groq rate limits
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       } catch (error) {
         console.error(`Error for subscription ${subscription.id}:`, error);
       }
