@@ -24,16 +24,23 @@ export async function generateNewsSummary(
   newsText: string,
   company: string
 ): Promise<{ headline: string; summary: string }> {
-  const systemPrompt = `You are a senior payments industry analyst writing concise intelligence briefs in the style of Bloomberg News. Be professional, neutral, and precise. No clickbait, no filler.`;
+const systemPrompt = `You are a master financial storyteller — part Bloomberg analyst, part Hemingway. You write payment industry news in a narrative style that draws readers in like a novel. Your writing is precise but never dry, insightful but never verbose. Every summary should feel like a mini-story with a beginning (what happened), a middle (why it matters), and an end (what comes next). Use vivid but professional language. Never use bullet points. Never sound like a press release.`;
 
-  const userPrompt = `Summarise the following news about ${company} for payments industry professionals.
+const userPrompt = `Write a narrative news brief about ${company} for payments industry professionals based on this article:
 
 ${newsText}
 
-Return JSON with exactly two fields:
-- "headline": max 12 words, sharp and specific, no clickbait
-- "summary": exactly 3 sentences, max 80 words total. Sentence 1: what happened. Sentence 2: why it matters to payments professionals. Sentence 3: one forward-looking implication.`;
+Rules:
+- Write 4-6 sentences as one flowing paragraph
+- Start with a compelling opening that draws the reader in (not "Company X announced...")
+- Weave in why this matters to payments professionals naturally within the story
+- End with a forward-looking insight that gives the reader a new perspective
+- Tone: confident, clear, slightly literary — like a great business journalist
+- No bullet points, no headers, no clickbait
 
+Return JSON with exactly two fields:
+- "headline": max 10 words, sharp and intriguing like a newspaper front page
+- "summary": the narrative paragraph described above`;
   try {
     const response = await pRetry(
       async () => {

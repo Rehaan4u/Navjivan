@@ -59,55 +59,246 @@ export async function sendNewsletterEmail(
     });
 
     // Create HTML email body
-    const htmlBody = `
-<!DOCTYPE html>
-<html>
+const htmlBody = `<!DOCTYPE html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payment Chronicle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
-    body { font-family: 'Inter', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { text-align: center; border-bottom: 2px solid #217BF4; padding-bottom: 20px; margin-bottom: 30px; }
-    .header h1 { color: #217BF4; margin: 0; font-size: 24px; }
-    .header p { color: #666; margin: 5px 0; font-size: 14px; }
-    .article { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #E0E0E0; }
-    .article h2 { color: #000; font-size: 18px; margin-bottom: 10px; font-family: 'Lora', Georgia, serif; }
-    .article p { color: #555; font-size: 14px; line-height: 1.6; }
-    .article .source { color: #999; font-size: 12px; margin-top: 10px; }
-    .article a { color: #217BF4; text-decoration: none; }
-    .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #E0E0E0; color: #999; font-size: 12px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background-color: #F7F5F0;
+      font-family: 'DM Sans', Arial, sans-serif;
+      color: #1a1a1a;
+      padding: 32px 16px;
+    }
+    .wrapper {
+      max-width: 620px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 2px 24px rgba(0,0,0,0.07);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #0F1B2D;
+      padding: 40px 48px 32px;
+      text-align: center;
+      border-bottom: 3px solid #C9A84C;
+    }
+    .header-eyebrow {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      color: #C9A84C;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .header-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.3px;
+      margin-bottom: 6px;
+    }
+    .header-byline {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .header-meta {
+      display: inline-block;
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 2px;
+      padding: 6px 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .header-meta strong {
+      color: #C9A84C;
+      font-weight: 500;
+    }
+
+    /* ── Edition bar ── */
+    .edition-bar {
+      background: #F7F5F0;
+      border-bottom: 1px solid #E8E4DC;
+      padding: 12px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .edition-date {
+      font-size: 12px;
+      color: #888;
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.5px;
+    }
+    .edition-companies {
+      font-size: 11px;
+      color: #C9A84C;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Body ── */
+    .body-wrap {
+      padding: 0 48px 40px;
+      background: #FFFFFF;
+    }
+
+    /* ── Article ── */
+    .article {
+      padding: 32px 0;
+      border-bottom: 1px solid #EEEBE4;
+    }
+    .article:last-child {
+      border-bottom: none;
+    }
+    .article-number {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 2.5px;
+      color: #C9A84C;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .article-headline {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #0F1B2D;
+      line-height: 1.35;
+      margin-bottom: 14px;
+      letter-spacing: -0.2px;
+    }
+    .article-summary {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 15.5px;
+      line-height: 1.75;
+      color: #2D2D2D;
+      font-weight: 300;
+    }
+    .article-summary em {
+      font-style: italic;
+    }
+    .article-footer {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .source-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #999;
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .source-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #CCC;
+      display: inline-block;
+    }
+    .read-more {
+      font-size: 12px;
+      color: #C9A84C;
+      text-decoration: none;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Divider ── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, #E0DBD0, transparent);
+      margin: 0 48px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: #0F1B2D;
+      padding: 28px 48px;
+      text-align: center;
+    }
+    .footer p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      font-family: 'DM Sans', sans-serif;
+      line-height: 1.8;
+    }
+    .footer a {
+      color: rgba(201,168,76,0.7);
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Payment Chronicle by Gajanan</h1>
-    <p>${formattedDate}</p>
-    <p style="color: #999;">Companies: ${newsletter.companies}</p>
-  </div>
+  <div class="wrapper">
 
-  ${articles
-    .map(
-      (article, index) => `
-    <div class="article">
-      <h2>${article.headline}</h2>
-      <p>${article.summary}</p>
-      <div class="source">
-        <strong>${article.sourceName}</strong> • 
-        <a href="${article.sourceUrl}" target="_blank">Read more</a>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-eyebrow">Daily Intelligence Briefing</div>
+      <div class="header-title">Payment Chronicle</div>
+      <div class="header-byline">by Gajanan Pujari</div>
+      <div class="header-meta">
+        <strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today
       </div>
     </div>
-  `
-    )
-    .join("")}
 
-  <div class="footer">
-    <p>© 2025 Payment Chronicle by Gajanan. All rights reserved.</p>
-    <p>You're receiving this because you subscribed to daily payments industry news.</p>
+    <!-- Edition bar -->
+    <div class="edition-bar">
+      <span class="edition-date">${formattedDate}</span>
+      <span class="edition-companies">Tracking: ${newsletter.companies}</span>
+    </div>
+
+    <!-- Articles -->
+    <div class="body-wrap">
+      ${articles.map((article, index) => `
+        <div class="article">
+          <div class="article-number">Story ${index + 1} of ${articles.length}</div>
+          <div class="article-headline">${article.headline}</div>
+          <div class="article-summary">${article.summary}</div>
+          <div class="article-footer">
+            <span class="source-label">${article.sourceName}</span>
+            <span class="source-dot"></span>
+            <a href="${article.sourceUrl}" class="read-more" target="_blank">Read full story →</a>
+          </div>
+        </div>
+      `).join('<div class="section-divider"></div>')}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} Payment Chronicle by Gajanan Pujari. All rights reserved.</p>
+      <p style="margin-top:6px;">You're receiving this because you subscribed to daily payments industry intelligence.</p>
+      <p style="margin-top:4px;"><a href="#">Unsubscribe</a> &nbsp;·&nbsp; <a href="#">Privacy Policy</a></p>
+    </div>
+
   </div>
 </body>
 </html>`;
 
     // Plain text version for email clients that don't support HTML
     const textBody = `
-Payment Chronicle by Gajanan
+Payment Chronicle
 ${formattedDate}
 Companies: ${newsletter.companies}
 
