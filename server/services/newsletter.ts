@@ -157,7 +157,7 @@ async function fetchAndScrapeGoogleNews(
     // Google RSS only gives title + URL, so we need to scrape the actual page
     const enriched = await Promise.all(
       recentItems.map(async (article) => {
-        if (!article.text || article.text === article.title) {
+        if (!article.text || article.text.length < 150) {
           const scrapedText = await scrapeArticleContent(article.url);
           if (scrapedText) {
             console.log(
