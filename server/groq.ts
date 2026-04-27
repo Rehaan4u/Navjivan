@@ -46,17 +46,32 @@ Return JSON with exactly two fields:
       async () => {
         try {
           const completion = await groq.chat.completions.create({
-            model: SUMMARY_MODEL,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            response_format: { type: "json_object" },
-            max_tokens: 300,
-          });
+  model: SUMMARY_MODEL,
+  messages: [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ],
+  // ✅ No response_format — we parse manually to handle long narratives
+  max_tokens: 600, // increased for longer narrative summaries
+});
 
-          const content = completion.choices[0]?.message?.content || "{}";
-          return JSON.parse(content);
+const content = completion.choices[0]?.message?.content || "";
+
+// ✅ Robust extraction — handles cases where model forgets JSON quotes
+const headlineMatch = content.match(/"headline"\s*:\s*"([^"]+)"/);
+const summaryMatch = content.match(/"summary"\s*:\s*"([\s\S]+?)"\s*\n?\s*\}/);
+
+// Fallback: if summary match fails try grabbing everything after "summary":
+const summaryFallback = content
+  .replace(/[\s\S]*"summary"\s*:\s*/, "")
+  .replace(/^"/, "")
+  .replace(/"?\s*\}?\s*$/, "")
+  .trim();
+
+return {
+  headline: headlineMatch?.[1] || "Payments Industry Update",
+  summary: summaryMatch?.[1] || summaryFallback || content.slice(0, 500),
+};
         } catch (error: any) {
           if (isRateLimitError(error)) {
             throw error; // Rethrow to trigger p-retry
