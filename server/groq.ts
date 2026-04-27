@@ -9,7 +9,6 @@ const groq = new Groq({
 const SUMMARY_MODEL = "llama-3.3-70b-versatile";
 const SCORING_MODEL = "llama-3.1-8b-instant";
 
-// Helper function to check if error is rate limit or quota violation
 function isRateLimitError(error: any): boolean {
   const errorMsg = error?.message || String(error);
   return (
@@ -24,57 +23,65 @@ export async function generateNewsSummary(
   newsText: string,
   company: string
 ): Promise<{ headline: string; summary: string }> {
-const systemPrompt = `You are a master financial storyteller — part Bloomberg analyst, part Hemingway. You write payment industry news in a narrative style that draws readers in like a novel. Your writing is precise but never dry, insightful but never verbose. Every summary should feel like a mini-story with a beginning (what happened), a middle (why it matters), and an end (what comes next). Use vivid but professional language. Never use bullet points. Never sound like a press release.`;
 
-const userPrompt = `Write a narrative news brief about ${company} for payments industry professionals based on this article:
+  // ✅ CORRECT PLACE for both prompts — inside generateNewsSummary
+  const systemPrompt = `You are a master financial storyteller — part Bloomberg analyst, part Hemingway. You write payment industry news in a narrative style that draws readers in like a novel. Your writing is precise but never dry, insightful but never verbose. Every summary should feel like a mini-story with a beginning (what happened), a middle (why it matters), and an end (what comes next). Use vivid but professional language. Never use bullet points. Never sound like a press release.`;
+
+  const userPrompt = `Write a deep narrative news brief about ${company} for payments industry professionals based on this article:
 
 ${newsText}
 
-Rules:
-- Write 4-6 sentences as one flowing paragraph
-- Start with a compelling opening that draws the reader in (not "Company X announced...")
-- Weave in why this matters to payments professionals naturally within the story
-- End with a forward-looking insight that gives the reader a new perspective
-- Tone: confident, clear, slightly literary — like a great business journalist
-- No bullet points, no headers, no clickbait
+You are writing for senior payments executives who want to be fully informed — not just what happened, but WHY it happened, WHAT forces led to it, and WHAT it means for the future.
 
-Return JSON with exactly two fields:
-- "headline": max 10 words, sharp and intriguing like a newspaper front page
-- "summary": the narrative paragraph described above`;
+Rules:
+- Write 6-8 sentences as one flowing, immersive paragraph
+- Opening: Hook the reader — set the scene, create context, make them feel the significance. Never start with "${company} announced" or "${company} said"
+- Middle: Explain WHY this happened — what market forces, competitive pressures, or strategic logic drove this decision. Make the reader feel like an insider
+- Industry impact: Weave in naturally what this means for payments professionals, merchants, banks, or consumers
+- Closing: A forward-looking insight — what should the reader watch for? What does this signal about where the industry is heading?
+- Tone: Authoritative, warm, slightly literary — like a brilliant FT Weekend long-read condensed into one perfect paragraph
+- Word count: 150-200 words for the summary — substantial enough to fully inform, tight enough to read in 60 seconds
+- Start with one relevant emoji that captures the story's essence
+- NO bullet points, NO headers, NO "In conclusion", NO clichés like "game-changer" or "revolutionary"
+- Write in a way that makes the reader feel genuinely wiser after reading it
+
+Return ONLY this JSON, nothing else before or after it:
+{"headline": "your headline here max 10 words", "summary": "your full narrative paragraph here starting with emoji"}`;
+
   try {
     const response = await pRetry(
       async () => {
         try {
           const completion = await groq.chat.completions.create({
-  model: SUMMARY_MODEL,
-  messages: [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ],
-  // ✅ No response_format — we parse manually to handle long narratives
-  max_tokens: 600, // increased for longer narrative summaries
-});
+            model: SUMMARY_MODEL,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            // ✅ No response_format — parse manually to handle long narratives
+            max_tokens: 800,
+          });
 
-const content = completion.choices[0]?.message?.content || "";
+          const content = completion.choices[0]?.message?.content || "";
 
-// ✅ Robust extraction — handles cases where model forgets JSON quotes
-const headlineMatch = content.match(/"headline"\s*:\s*"([^"]+)"/);
-const summaryMatch = content.match(/"summary"\s*:\s*"([\s\S]+?)"\s*\n?\s*\}/);
+          // ✅ Robust extraction — handles cases where model forgets JSON quotes
+          const headlineMatch = content.match(/"headline"\s*:\s*"([^"]+)"/);
+          const summaryMatch = content.match(/"summary"\s*:\s*"([\s\S]+?)"\s*\n?\s*\}/);
 
-// Fallback: if summary match fails try grabbing everything after "summary":
-const summaryFallback = content
-  .replace(/[\s\S]*"summary"\s*:\s*/, "")
-  .replace(/^"/, "")
-  .replace(/"?\s*\}?\s*$/, "")
-  .trim();
+          // Fallback: grab everything after "summary":
+          const summaryFallback = content
+            .replace(/[\s\S]*"summary"\s*:\s*/, "")
+            .replace(/^"/, "")
+            .replace(/"?\s*\}?\s*$/, "")
+            .trim();
 
-return {
-  headline: headlineMatch?.[1] || "Payments Industry Update",
-  summary: summaryMatch?.[1] || summaryFallback || content.slice(0, 500),
-};
+          return {
+            headline: headlineMatch?.[1] || "Payments Industry Update",
+            summary: summaryMatch?.[1] || summaryFallback || content.slice(0, 500),
+          };
         } catch (error: any) {
           if (isRateLimitError(error)) {
-            throw error; // Rethrow to trigger p-retry
+            throw error;
           }
           throw new AbortError(error);
         }
@@ -90,7 +97,6 @@ return {
     return response;
   } catch (error) {
     console.error("Error generating summary:", error);
-    // Return fallback
     return {
       headline: "Update from " + company,
       summary: newsText.slice(0, 200) + "...",
@@ -101,12 +107,10 @@ return {
 export async function batchGenerateSummaries(
   newsItems: Array<{ text: string; company: string }>
 ): Promise<Array<{ headline: string; summary: string }>> {
-  const limit = pLimit(2); // Process up to 2 requests concurrently
-
+  const limit = pLimit(2);
   const promises = newsItems.map((item) =>
     limit(() => generateNewsSummary(item.text, item.company))
   );
-
   return await Promise.all(promises);
 }
 
@@ -115,17 +119,16 @@ export async function scoreArticleRelevance(
   text: string,
   company: string
 ): Promise<number> {
-  // Truncate text to avoid token limits
   const maxTextLength = 1000;
   const truncatedText =
     text.length > maxTextLength
       ? text.substring(0, maxTextLength) + "..."
       : text;
 
+  // ✅ scoring prompt stays here, separate from summary prompt
   const prompt = `You are an AI analyst for the payments industry. Evaluate whether this news article is relevant to "${company}" and the payments/fintech industry.
 
 Article Title: ${title}
-
 Article Text: ${truncatedText}
 
 Score the relevance from 0 to 100 where:
@@ -144,7 +147,7 @@ Return ONLY a JSON object with a single "score" field containing an integer from
             model: SCORING_MODEL,
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
-            max_tokens: 150,
+            max_tokens: 50,
           });
 
           const content =
