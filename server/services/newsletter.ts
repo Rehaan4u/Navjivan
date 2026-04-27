@@ -284,18 +284,15 @@ async function scoreArticlesInBatches(
     );
 
     // ✅ Must score ≥ 70 AND mention company name to pass
-    const batchPassed = scoredBatch.filter((a) => {
-      if (a.relevanceScore < RELEVANCE_THRESHOLD) return false;
-      const mentionsCompany = `${a.title} ${a.text}`
-        .toLowerCase()
-        .includes(company.toLowerCase());
-      if (!mentionsCompany) {
-        console.log(
-          `[SCORING] Rejected (no company mention): "${a.title.substring(0, 50)}"`
-        );
-      }
-      return mentionsCompany;
-    });
+ const batchPassed = scoredBatch.filter((a) => {
+  const passed = a.relevanceScore >= RELEVANCE_THRESHOLD;
+  if (!passed) {
+    console.log(
+      `[SCORING] Rejected (score ${a.relevanceScore} < ${RELEVANCE_THRESHOLD}): "${a.title.substring(0, 50)}"`
+    );
+  }
+  return passed;
+});
 
     console.log(
       `[SCORING] Batch ${batchNum} result: ${batchPassed.length}/${batch.length} passed`
@@ -535,21 +532,21 @@ export async function generateNewsletterForSubscription(
     );
 
     console.log(`\n🔍 Fetching news for all companies...`);
-    const companyNewsResults = await Promise.allSettled(
-      companies.map((company) =>
-        fetchNewsForCompany(company, articleLimit).then((items) => ({
-          company,
-          items,
-        }))
-      )
-    );
+// ✅ Staggered parallel — starts each company 3s apart but all run concurrently
+const companyNewsResults = await Promise.allSettled(
+  companies.map((company, index) =>
+    new Promise<void>(resolve => setTimeout(resolve, index * 3000))
+      .then(() => fetchNewsForCompany(company, articleLimit))
+      .then((items) => ({ company, items }))
+  )
+);
 
-    const companyNewsMap: Array<{ company: string; items: NewsItem[] }> = [];
-    for (const result of companyNewsResults) {
-      if (result.status === "fulfilled") {
-        companyNewsMap.push(result.value);
-      }
-    }
+const companyNewsMap: Array<{ company: string; items: NewsItem[] }> = [];
+for (const result of companyNewsResults) {
+  if (result.status === "fulfilled") {
+    companyNewsMap.push(result.value);
+  }
+}
 
     // ✅ Filter out articles already sent to this subscription
     for (const companyNews of companyNewsMap) {

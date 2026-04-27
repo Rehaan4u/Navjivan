@@ -126,16 +126,18 @@ export async function scoreArticleRelevance(
       : text;
 
   // ✅ scoring prompt stays here, separate from summary prompt
-  const prompt = `You are an AI analyst for the payments industry. Evaluate whether this news article is relevant to "${company}" and the payments/fintech industry.
+const prompt = `You are an AI analyst for the payments industry. Score this article's relevance to the company "${company}".
 
 Article Title: ${title}
 Article Text: ${truncatedText}
 
-Score the relevance from 0 to 100 where:
-- 0-30: Not relevant (unrelated to payments industry or company)
-- 31-60: Somewhat relevant (mentions payments but not substantive)
-- 61-85: Relevant (good payments industry content about the company)
-- 86-100: Highly relevant (important payments news directly about the company)
+Scoring rules — apply ALL of these:
+1. If the article does NOT mention "${company}" by name anywhere → score must be 0-25 maximum, no exceptions
+2. If the article mentions "${company}" but only briefly or in passing → score 26-50
+3. If the article is substantially about "${company}" and payments/fintech → score 51-85
+4. If the article is directly and primarily about "${company}" with significant payments impact → score 86-100
+
+The company name check is STRICT — if "${company}" does not appear in the title or text, the score cannot exceed 25 regardless of how relevant the payments content is.
 
 Return ONLY a JSON object with a single "score" field containing an integer from 0-100.`;
 

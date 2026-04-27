@@ -324,15 +324,19 @@ export default function Dashboard() {
     },
   });
 
-  const triggerMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/admin/trigger-newsletters", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}), credentials: "include",
-      });
-      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-      return res;
-    },
+const triggerMutation = useMutation({
+  mutationFn: async () => {
+    // ✅ Always refetch latest subscription before triggering
+    await queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    await queryClient.refetchQueries({ queryKey: ["subscriptions"] });
+
+    const res = await fetch("/api/admin/trigger-newsletters", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}), credentials: "include",
+    });
+    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    return res;
+  },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["newsletters"] });
       toast({ title: "Generating newsletter", description: `Your newsletter is being prepared. Check ${user?.email} in a few minutes.` });
