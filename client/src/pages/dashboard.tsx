@@ -14,19 +14,19 @@ import {
 const VALID_COMPANIES = [
   {
     name: "AWS",
-    logo: "https://logo.clearbit.com/aws.amazon.com",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg",
     description: "Amazon Web Services",
     color: "#FF9900",
   },
   {
     name: "Google Cloud",
-    logo: "https://logo.clearbit.com/cloud.google.com",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/0/01/Google-cloud-platform.svg",
     description: "Google Cloud Platform",
     color: "#4285F4",
   },
   {
     name: "Microsoft Azure",
-    logo: "https://logo.clearbit.com/microsoft.com",
+    logo: "https://upload.wikimedia.org/wikipedia/commons/f/fa/Microsoft_Azure.svg",
     description: "Microsoft Azure Cloud",
     color: "#0078D4",
   },
@@ -273,11 +273,19 @@ export default function Dashboard() {
     },
   });
 
-  useEffect(() => {
-    if (subscription) {
-      setSelectedCompanies(subscription.companies.split(',').map(c => c.trim()).filter(Boolean));
-    }
-  }, [subscription]);
+useEffect(() => {
+  if (subscription) {
+    const saved = subscription.companies
+      .split(',')
+      .map(c => c.trim())
+      .filter(Boolean);
+    // Only restore companies that exist in VALID_COMPANIES
+    const valid = saved.filter(name =>
+      VALID_COMPANIES.some(c => c.name === name)
+    );
+    setSelectedCompanies(valid);
+  }
+}, [subscription]);
 
   // const filteredCompanies = VALID_COMPANIES.filter(
   //   c => c.name.toLowerCase().includes(companySearch.toLowerCase()) && !selectedCompanies.includes(c.name)
