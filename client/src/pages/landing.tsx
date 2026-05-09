@@ -117,7 +117,7 @@ export default function Landing() {
 
         <button
           className="login-btn"
-          onClick={() => window.location.href = "/api/login"}
+          onClick={() => window.location.href = "/api/auth/google"}
           style={{
             background: "linear-gradient(135deg, #C9A84C, #A07830)",
             color: "#0A0F1E",
@@ -239,7 +239,7 @@ export default function Landing() {
             }} />
             <button
               className="login-btn"
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => window.location.href = "/api/auth/google"}
               style={{
                 position: "relative",
                 background: "linear-gradient(135deg, #C9A84C, #A07830)",
@@ -429,7 +429,7 @@ export default function Landing() {
           </p>
           <button
             className="login-btn"
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = "/api/auth/google"}
             style={{
               background: "linear-gradient(135deg, #C9A84C, #A07830)",
               color: "#0A0F1E",
