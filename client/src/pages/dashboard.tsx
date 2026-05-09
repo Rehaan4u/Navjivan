@@ -12,43 +12,25 @@ import {
 } from "lucide-react";
 
 const VALID_COMPANIES = [
-  // Global majors
-  { name: "Visa",           logo: "https://logo.clearbit.com/visa.com" },
-  { name: "Mastercard",     logo: "https://logo.clearbit.com/mastercard.com" },
-  { name: "PayPal",         logo: "https://logo.clearbit.com/paypal.com" },
-  { name: "Stripe",         logo: "https://logo.clearbit.com/stripe.com" },
-  { name: "American Express", logo: "https://logo.clearbit.com/americanexpress.com" },
-  { name: "Discover",       logo: "https://logo.clearbit.com/discover.com" },
-  // Indian fintech
-  { name: "Razorpay",       logo: "https://logo.clearbit.com/razorpay.com" },
-  { name: "Paytm",          logo: "https://logo.clearbit.com/paytm.com" },
-  { name: "PhonePe",        logo: "https://logo.clearbit.com/phonepe.com" },
-  { name: "BharatPe",       logo: "https://logo.clearbit.com/bharatpe.com" },
-  { name: "Cashfree",       logo: "https://logo.clearbit.com/cashfree.com" },
-  { name: "Juspay",         logo: "https://logo.clearbit.com/juspay.in" },
-  { name: "Pine Labs",      logo: "https://logo.clearbit.com/pinelabs.com" },
-  { name: "BillDesk",       logo: "https://logo.clearbit.com/billdesk.com" },
-  { name: "CCAvenue",       logo: "https://logo.clearbit.com/ccavenue.com" },
-  { name: "MobiKwik",       logo: "https://logo.clearbit.com/mobikwik.com" },
-  { name: "Zaggle",         logo: "https://logo.clearbit.com/zaggle.in" },
-  { name: "Setu",           logo: "https://logo.clearbit.com/setu.co" },
-  { name: "Open",           logo: "https://logo.clearbit.com/open.money" },
-  { name: "Perfios",        logo: "https://logo.clearbit.com/perfios.com" },
-  // Indian banks active in payments
-  { name: "HDFC Bank",      logo: "https://logo.clearbit.com/hdfcbank.com" },
-  { name: "ICICI Bank",     logo: "https://logo.clearbit.com/icicibank.com" },
-  { name: "Axis Bank",      logo: "https://logo.clearbit.com/axisbank.com" },
-  { name: "Kotak Mahindra", logo: "https://logo.clearbit.com/kotak.com" },
-  { name: "SBI",            logo: "https://logo.clearbit.com/sbi.co.in" },
-  // Infrastructure & networks
-  { name: "NPCI",           logo: "https://logo.clearbit.com/npci.org.in" },
-  { name: "RuPay",          logo: "https://logo.clearbit.com/rupay.co.in" },
-  { name: "Adyen",          logo: "https://logo.clearbit.com/adyen.com" },
-  { name: "Worldline",      logo: "https://logo.clearbit.com/worldline.com" },
-  { name: "FIS",            logo: "https://logo.clearbit.com/fisglobal.com" },
-  { name: "Fiserv",         logo: "https://logo.clearbit.com/fiserv.com" },
+  {
+    name: "AWS",
+    logo: "https://logo.clearbit.com/aws.amazon.com",
+    description: "Amazon Web Services",
+    color: "#FF9900",
+  },
+  {
+    name: "Google Cloud",
+    logo: "https://logo.clearbit.com/cloud.google.com",
+    description: "Google Cloud Platform",
+    color: "#4285F4",
+  },
+  {
+    name: "Microsoft Azure",
+    logo: "https://logo.clearbit.com/microsoft.com",
+    description: "Microsoft Azure Cloud",
+    color: "#0078D4",
+  },
 ];
-
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -58,12 +40,12 @@ export default function Dashboard() {
   const particleCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
-  const [companySearch, setCompanySearch] = useState("");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  // const [companySearch, setCompanySearch] = useState("");
+  // const [dropdownOpen, setDropdownOpen] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
   //added ghost auto-complete feature
-  const [ghostSuggestion, setGhostSuggestion] = useState<string>("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  // const [ghostSuggestion, setGhostSuggestion] = useState<string>("");
+  // const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -71,15 +53,15 @@ export default function Dashboard() {
     }
   }, [authLoading, user]);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // useEffect(() => {
+  //   function handleClickOutside(e: MouseEvent) {
+  //     if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+  //       setDropdownOpen(false);
+  //     }
+  //   }
+  //   document.addEventListener("mousedown", handleClickOutside);
+  //   return () => document.removeEventListener("mousedown", handleClickOutside);
+  // }, []);
 
   useEffect(() => {
     const gCanvas = globeCanvasRef.current;
@@ -297,10 +279,10 @@ export default function Dashboard() {
     }
   }, [subscription]);
 
-  const filteredCompanies = VALID_COMPANIES.filter(
-    c => c.name.toLowerCase().includes(companySearch.toLowerCase()) && !selectedCompanies.includes(c.name)
-  );
-  const searchMatchesNothing = companySearch.length > 0 && filteredCompanies.length === 0;
+  // const filteredCompanies = VALID_COMPANIES.filter(
+  //   c => c.name.toLowerCase().includes(companySearch.toLowerCase()) && !selectedCompanies.includes(c.name)
+  // );
+  // const searchMatchesNothing = companySearch.length > 0 && filteredCompanies.length === 0;
 
   const removeCompany = (name: string) => {
     setSelectedCompanies(prev => prev.filter(c => c !== name));
@@ -347,15 +329,12 @@ const triggerMutation = useMutation({
   });
 
   const handleSavePreferences = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (companySearch.length > 0 && !VALID_COMPANIES.find(c => c.name.toLowerCase() === companySearch.toLowerCase())) {
-      setCompanyError("Invalid company — please select from the list"); return;
-    }
-    if (selectedCompanies.length === 0) {
-      toast({ title: "Select at least one company", variant: "destructive" }); return;
-    }
-    subscribeMutation.mutate({ companies: selectedCompanies.join(", ") });
-  };
+  e.preventDefault();
+  if (selectedCompanies.length === 0) {
+    toast({ title: "Select at least one platform", variant: "destructive" }); return;
+  }
+  subscribeMutation.mutate({ companies: selectedCompanies.join(", ") });
+};
 
   if (authLoading) {
     return (
@@ -442,7 +421,7 @@ const triggerMutation = useMutation({
                 Welcome back, {user?.firstName || user?.email?.split('@')[0] || 'there'}
               </div>
               <div className="pc-header-welcome-sub">
-                Your personalised payments industry briefing, powered by AI.
+                Your personalised cloud industry briefing, powered by AI.
               </div>
             </div>
             <div className="pc-header-pills">
@@ -476,123 +455,141 @@ const triggerMutation = useMutation({
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 22 }}>
                     <div className="pc-section-icon"><Building2 size={18} /></div>
                     <div>
-                      <div className="pc-section-title">Company Preferences</div>
-                      <div className="pc-section-desc">Choose up to 3 companies to track</div>
+                      <div className="pc-section-title">Cloud Platform Tracker</div>
+                      <div className="pc-section-desc">Select cloud platforms to track — click a tile to toggle</div>
                     </div>
                   </div>
+                  <form onSubmit={handleSavePreferences} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-                  <form onSubmit={handleSavePreferences} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    <div style={{ position: "relative" }} ref={dropdownRef}>
-                      <div
-                        className={`pc-company-input-box${companyError || searchMatchesNothing ? " error" : ""}`}
-                        onClick={() => setDropdownOpen(true)}
-                        data-testid="input-companies"
-                      >
-                        {selectedCompanies.map(name => {
-                          const co = VALID_COMPANIES.find(c => c.name === name);
+                      {/* ── Clickable cloud platform tiles ── */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {VALID_COMPANIES.map(co => {
+                          const isSelected = selectedCompanies.includes(co.name);
                           return (
-                            <span key={name} className="pc-chip" data-testid={`chip-company-${name}`}>
-                              {co && <img src={co.logo} alt={name} style={{ width: 16, height: 16, borderRadius: 3, objectFit: "contain" }}
-                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
-                              {name}
-                              <button type="button" className="pc-chip-remove" onClick={ev => { ev.stopPropagation(); removeCompany(name); }} data-testid={`button-remove-${name}`}>
-                                <X size={12} />
-                              </button>
-                            </span>
-                          );
-                        })}
-                        <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1 }}>
-                            {/* Ghost suggestion shown behind the real input */}
-                            {ghostSuggestion && companySearch.length > 0 && (
-                              <span style={{
-                                position: "absolute",
-                                left: 0,
-                                top: "50%",
-                                transform: "translateY(-50%)",
-                                pointerEvents: "none",
-                                whiteSpace: "nowrap",
-                                fontSize: 14,
-                                fontFamily: "inherit",
-                              }}>
-                                {/* Typed part — invisible (matches input text) */}
-                                <span style={{ color: "transparent" }}>{companySearch}</span>
-                                {/* Ghost part — visible in light grey */}
-                                <span style={{ color: "#BBBBBB" }}>
-                                  {ghostSuggestion.slice(companySearch.length)}
-                                </span>
-                              </span>
-                            )}
-                                <input
-                                type="text"
-                                className="pc-company-input"
-                                value={companySearch}
-                                style={{ background: "transparent", position: "relative", zIndex: 1 }}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  setCompanySearch(val);
-                                  setDropdownOpen(true);
-                                  setCompanyError(null);
-                                  // Ghost suggestion: find first company that starts with typed text
-                                  if (val.length > 0) {
-                                    const match = VALID_COMPANIES.find(
-                                      c => c.name.toLowerCase().startsWith(val.toLowerCase()) &&
-                                          !selectedCompanies.includes(c.name)
-                                    );
-                                    setGhostSuggestion(match ? match.name : "");
-                                  } else {
-                                    setGhostSuggestion("");
-                                  }
-                                }}
-                                
-                                onFocus={() => setDropdownOpen(true)}
-                                onKeyDown={e => {
-                                if (e.key === "Tab" && ghostSuggestion) {
-                                  e.preventDefault();
-                                  if (selectedCompanies.length < 3) {
-                                    setSelectedCompanies(prev => [...prev, ghostSuggestion]);
-                                    setCompanySearch("");
-                                    setGhostSuggestion("");
-                                    setDropdownOpen(false);
-                                  }
+                            <button
+                              key={co.name}
+                              type="button"
+                              onClick={() => {
+                                setCompanyError(null);
+                                if (isSelected) {
+                                  setSelectedCompanies(prev => prev.filter(c => c !== co.name));
+                                } else if (selectedCompanies.length < 3) {
+                                  setSelectedCompanies(prev => [...prev, co.name]);
+                                } else {
+                                  setCompanyError("Maximum 3 platforms selected");
                                 }
                               }}
-                                placeholder={selectedCompanies.length === 0 ? "Search Razorpay, PhonePe, Visa… (Tab to select)" : ""}
-                                disabled={selectedCompanies.length >= 3 || subscribeMutation.isPending}
-                                data-testid="input-company-search"
-                            />
-                          </div>
-                        </div>
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 16,
+                                padding: "14px 18px",
+                                borderRadius: 10,
+                                border: isSelected
+                                  ? `2px solid ${co.color}`
+                                  : "2px solid rgba(255,255,255,0.08)",
+                                background: isSelected
+                                  ? `${co.color}15`
+                                  : "rgba(255,255,255,0.02)",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                                textAlign: "left",
+                                width: "100%",
+                              }}
+                              data-testid={`tile-company-${co.name}`}
+                            >
+                              {/* Logo */}
+                              <div style={{
+                                width: 44, height: 44,
+                                borderRadius: 10,
+                                background: "rgba(255,255,255,0.06)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                flexShrink: 0,
+                                border: `1px solid ${isSelected ? co.color + "40" : "transparent"}`,
+                              }}>
+                                <img
+                                  src={co.logo}
+                                  alt={co.name}
+                                  style={{ width: 28, height: 28, objectFit: "contain" }}
+                                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                />
+                              </div>
 
-                      {dropdownOpen && filteredCompanies.length > 0 && (
-                        <div className="pc-dropdown">
-                          {filteredCompanies.map(co => (
-                            <button type="button" key={co.name} className="pc-dropdown-item"
-                              onMouseDown={e => { e.preventDefault(); setSelectedCompanies(prev => [...prev, co.name]); setCompanySearch(""); setDropdownOpen(false); setCompanyError(null); }}
-                              data-testid={`option-company-${co.name}`}>
-                              <img src={co.logo} alt={co.name} style={{ width: 20, height: 20, borderRadius: 4, objectFit: "contain" }}
-                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                              {co.name}
+                              {/* Text */}
+                              <div style={{ flex: 1 }}>
+                                <div style={{
+                                  fontSize: 15, fontWeight: 600,
+                                  color: isSelected ? co.color : "var(--pc-text)",
+                                  marginBottom: 2,
+                                }}>
+                                  {co.name}
+                                </div>
+                                <div style={{
+                                  fontSize: 12,
+                                  color: "var(--pc-text-muted)",
+                                }}>
+                                  {co.description}
+                                </div>
+                              </div>
+
+                              {/* Checkmark */}
+                              <div style={{
+                                width: 22, height: 22,
+                                borderRadius: "50%",
+                                border: isSelected ? `2px solid ${co.color}` : "2px solid rgba(255,255,255,0.15)",
+                                background: isSelected ? co.color : "transparent",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                flexShrink: 0,
+                                transition: "all 0.2s ease",
+                              }}>
+                                {isSelected && (
+                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                )}
+                              </div>
                             </button>
-                          ))}
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
 
-                      {(companyError || searchMatchesNothing) && (
+                      {/* Error message */}
+                      {companyError && (
                         <div className="pc-error-text" data-testid="text-company-error">
-                          Invalid company — please select from the list
+                          {companyError}
                         </div>
                       )}
-                    </div>
 
-                    <div>
-                      <button type="submit" className="pc-btn-gold" disabled={subscribeMutation.isPending || selectedCompanies.length === 0} data-testid="button-save-subscription">
+                      {/* Selected count */}
+                      {selectedCompanies.length > 0 && (
+                        <div style={{
+                          fontSize: 12,
+                          color: "var(--pc-text-muted)",
+                          textAlign: "center",
+                        }}>
+                          {selectedCompanies.length} of 3 platforms selected
+                        </div>
+                      )}
+
+                      {/* Save button */}
+                      <button
+                        type="submit"
+                        className="pc-btn-gold"
+                        disabled={subscribeMutation.isPending || selectedCompanies.length === 0}
+                        data-testid="button-save-subscription"
+                      >
                         {subscribeMutation.isPending
-                          ? <><div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.30)", borderTopColor: "#ffffff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />{subscription ? "Updating…" : "Subscribing…"}</>
-                          : <><Settings size={14} />{subscription ? "Update Preferences" : "Start My Newsletter"}</>
+                          ? <>
+                              <div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.30)", borderTopColor: "#ffffff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                              {subscription ? "Updating…" : "Subscribing…"}
+                            </>
+                          : <>
+                              <Settings size={14} />
+                              {subscription ? "Update Preferences" : "Start My Newsletter"}
+                            </>
                         }
                       </button>
-                    </div>
-                  </form>
+                   </form>
                 </div>
 
                 <div className="pc-card pc-card-inner" style={{ minWidth: 0 }}>
