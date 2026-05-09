@@ -33,22 +33,16 @@ const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 // ✅ Removed all dead sources (404s and invalid XML)
 // ============================
 const CURATED_RSS_FEEDS = [
-  { name: "Finextra Payments",        url: "https://www.finextra.com/rss/channel.aspx?channel=payments" },
-  { name: "Finextra Regulation",      url: "https://www.finextra.com/rss/channel.aspx?channel=regulation" },
-  { name: "Finextra Crypto",          url: "https://www.finextra.com/rss/channel.aspx?channel=crypto" },
-  { name: "Finextra Security",        url: "https://www.finextra.com/rss/channel.aspx?channel=security" },
-  { name: "PaymentsJournal Podcast",  url: "https://www.paymentsjournal.com/category/the-paymentsjournal-podcast/feed/" },
-  { name: "The Finanser",             url: "https://thefinanser.com/feed" },
-  { name: "Tearsheet Podcast",        url: "https://tearsheet.co/podcasts/feed/" },
-  { name: "Stripe Blog",              url: "https://stripe.com/blog/feed.rss" },
-  { name: "Adyen Blog",               url: "https://www.adyen.com/knowledge-hub/rss.xml" },
-  // ❌ REMOVED: Fintech Brainfood (404)
-  // ❌ REMOVED: Glenbrook Payments on Fire (404)
-  // ❌ REMOVED: 11:FS Podcast (404)
-  // ❌ REMOVED: Visa News (404)
-  // ❌ REMOVED: Mastercard Newsroom (404)
-  // ❌ REMOVED: Nacha Payments (404)
-  // ❌ REMOVED: PayPal Newsroom (invalid XML)
+  // Official cloud provider blogs
+  { name: "AWS Blog",           url: "https://aws.amazon.com/blogs/aws/feed/" },
+  { name: "Google Cloud Blog",  url: "https://cloudblog.withgoogle.com/rss/" },
+  { name: "Azure Blog",         url: "https://azure.microsoft.com/en-us/blog/feed/" },
+  // Cloud industry news
+  { name: "The New Stack",      url: "https://thenewstack.io/feed/" },
+  { name: "InfoQ Cloud",        url: "https://feed.infoq.com/cloud/" },
+  { name: "TechCrunch Cloud",   url: "https://techcrunch.com/tag/cloud-computing/feed/" },
+  { name: "SiliconAngle Cloud", url: "https://siliconangle.com/feed/" },
+  { name: "ZDNet Cloud",        url: "https://www.zdnet.com/topic/cloud/rss.xml" },
 ];
 
 // ============================
@@ -131,8 +125,8 @@ async function fetchAndScrapeGoogleNews(
   company: string,
   parser: Parser
 ): Promise<NewsItem[]> {
-  const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(
-    company + " payments"
+const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(
+    company + " cloud"
   )}`;
 
   try {
@@ -215,21 +209,22 @@ function filterRelevantArticles(
   articles: NewsItem[],
   company: string
 ): NewsItem[] {
-  const PAYMENTS_KEYWORDS = [
-    "payment", "payments", "fintech", "financial", "transaction",
-    "banking", "merchant", "checkout", "credit card", "debit",
-    "mobile wallet", "digital wallet", "pos", "point of sale",
-    "ecommerce", "e-commerce", "processor", "gateway", "acquiring",
-    "issuing", "settlement", "compliance", "regulation", "fraud",
-    "security", "authentication", "tokenization", "cryptocurrency",
-    "blockchain", "revenue", "earnings", "partnership", "acquisition",
-    "growth", "expansion",
+  const CLOUD_KEYWORDS = [
+    "cloud", "aws", "azure", "google cloud", "gcp", "kubernetes",
+    "docker", "serverless", "lambda", "ec2", "s3", "azure",
+    "devops", "infrastructure", "saas", "paas", "iaas",
+    "data center", "migration", "hybrid cloud", "multi-cloud",
+    "machine learning", "ai", "artificial intelligence", "llm",
+    "compute", "storage", "networking", "security", "compliance",
+    "microservices", "api", "ci/cd", "devsecops", "observability",
+    "revenue", "earnings", "partnership", "acquisition", "growth",
+    "outage", "downtime", "region", "availability zone", "latency",
   ];
 
   return articles.filter((article) => {
     const combinedText = `${article.title} ${article.text}`.toLowerCase();
     const mentionsCompany = combinedText.includes(company.toLowerCase());
-    const hasKeyword = PAYMENTS_KEYWORDS.some((kw) =>
+    const hasKeyword = CLOUD_KEYWORDS.some((kw) =>
       combinedText.includes(kw.toLowerCase())
     );
     const isRelevant = mentionsCompany || hasKeyword;
