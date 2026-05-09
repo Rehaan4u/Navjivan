@@ -428,8 +428,8 @@ const triggerMutation = useMutation({
             <div className="pc-header-brand-row">
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div>
-                  <div className="pc-brand-name">Payment Chronicle</div>
-                  <div className="pc-brand-sub">BY GAJANAN PUJARI</div>
+                  <div className="pc-brand-name">Navjivan</div>
+                  <div className="pc-brand-sub">EST. 1919 · REBORN IN AI</div>
                 </div>
               </div>
             </div>
@@ -688,7 +688,7 @@ const triggerMutation = useMutation({
 
       <footer className="pc-footer">
         <div className="pc-footer-inner">
-          <span className="pc-footer-copy">© {new Date().getFullYear()} Payment Chronicle by Gajanan. All rights reserved.</span>
+          <span className="pc-footer-copy">© {new Date().getFullYear()} Navjivan by Gajanan. All rights reserved.</span>
           <div style={{ display: "flex", gap: 20 }}>
             <a href="#" className="pc-footer-link">Privacy Policy</a>
             <a href="#" className="pc-footer-link">Terms of Service</a>
