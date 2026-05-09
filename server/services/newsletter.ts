@@ -24,7 +24,7 @@ interface NewsItem {
 // ============================
 const MAX_ARTICLES_PER_SOURCE = 50;     // max articles taken from any one source
 const BATCH_SIZE = 5;                    // score 5 articles at a time
-const RELEVANCE_THRESHOLD = 70;          // minimum score to pass
+const RELEVANCE_THRESHOLD = 50;          // minimum score to pass
 const BATCH_PASS_THRESHOLD = 3;         // if 3+ pass in a batch, stop scoring this source
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
