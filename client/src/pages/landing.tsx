@@ -1,37 +1,202 @@
+import { useState, useEffect, useRef } from "react";
+
+// ── Animated floating node for the network visualization ──
+function FloatingNode({ x, y, size, color, delay }: {
+  x: number; y: number; size: number; color: string; delay: number;
+}) {
+  return (
+    <div style={{
+      position: "absolute",
+      left: `${x}%`,
+      top: `${y}%`,
+      width: size,
+      height: size,
+      borderRadius: "50%",
+      background: color,
+      boxShadow: `0 0 ${size * 2}px ${color}`,
+      animation: `floatNode 6s ease-in-out infinite`,
+      animationDelay: `${delay}s`,
+      pointerEvents: "none",
+    }} />
+  );
+}
+
+// ── Animated news card flying across screen ──
+function NewsCard({ title, source, x, y, delay }: {
+  title: string; source: string; x: number; y: number; delay: number;
+}) {
+  return (
+    <div style={{
+      position: "absolute",
+      left: `${x}%`,
+      top: `${y}%`,
+      background: "rgba(255,255,255,0.06)",
+      backdropFilter: "blur(8px)",
+      border: "1px solid rgba(255,255,255,0.12)",
+      borderRadius: 10,
+      padding: "10px 14px",
+      width: 200,
+      animation: `driftCard 12s ease-in-out infinite`,
+      animationDelay: `${delay}s`,
+      pointerEvents: "none",
+      zIndex: 0,
+    }}>
+      <div style={{
+        fontSize: 10, color: "#4C9AFF",
+        fontFamily: "sans-serif",
+        letterSpacing: "1px",
+        textTransform: "uppercase",
+        marginBottom: 4,
+      }}>{source}</div>
+      <div style={{
+        fontSize: 12, color: "rgba(255,255,255,0.7)",
+        fontFamily: "sans-serif",
+        lineHeight: 1.4,
+      }}>{title}</div>
+    </div>
+  );
+}
+
 export default function Landing() {
+  const [mouseX, setMouseX] = useState(50);
+  const [mouseY, setMouseY] = useState(50);
+  const [scrollY, setScrollY] = useState(0);
+  const [typedText, setTypedText] = useState("");
+  const [showCursor, setShowCursor] = useState(true);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const fullText = "Cloud & Technology";
+
+  // ── Typewriter effect ──
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i <= fullText.length) {
+        setTypedText(fullText.slice(0, i));
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 80);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Cursor blink ──
+  useEffect(() => {
+    const interval = setInterval(() => setShowCursor(p => !p), 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Mouse parallax ──
+  useEffect(() => {
+    const handleMouse = (e: MouseEvent) => {
+      setMouseX((e.clientX / window.innerWidth) * 100);
+      setMouseY((e.clientY / window.innerHeight) * 100);
+    };
+    window.addEventListener("mousemove", handleMouse);
+    return () => window.removeEventListener("mousemove", handleMouse);
+  }, []);
+
+  // ── Scroll tracking ──
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // ── Canvas network animation ──
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    type Dot = { x: number; y: number; vx: number; vy: number };
+    const dots: Dot[] = Array.from({ length: 60 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+    }));
+
+    let animId: number;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      dots.forEach(dot => {
+        dot.x += dot.vx;
+        dot.y += dot.vy;
+        if (dot.x < 0 || dot.x > canvas.width) dot.vx *= -1;
+        if (dot.y < 0 || dot.y > canvas.height) dot.vy *= -1;
+
+        // Draw dot
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(76,154,255,0.4)";
+        ctx.fill();
+      });
+
+      // Draw connections
+      dots.forEach((a, i) => {
+        dots.slice(i + 1).forEach(b => {
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = `rgba(76,154,255,${0.15 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+      });
+
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  const floatingNodes = [
+    { x: 15, y: 20, size: 8,  color: "rgba(76,154,255,0.6)",  delay: 0 },
+    { x: 80, y: 15, size: 12, color: "rgba(201,168,76,0.5)",  delay: 1 },
+    { x: 90, y: 60, size: 6,  color: "rgba(76,154,255,0.4)",  delay: 2 },
+    { x: 10, y: 70, size: 10, color: "rgba(201,168,76,0.4)",  delay: 0.5 },
+    { x: 50, y: 85, size: 8,  color: "rgba(76,154,255,0.5)",  delay: 1.5 },
+    { x: 70, y: 40, size: 5,  color: "rgba(201,168,76,0.6)",  delay: 3 },
+  ];
+
+  const floatingCards = [
+    { title: "AWS launches new AI inference chip", source: "AWS Blog", x: 5,  y: 25, delay: 0 },
+    { title: "Google Cloud expands Asia regions", source: "Google Cloud", x: 72, y: 20, delay: 2 },
+    { title: "Azure secures $2B enterprise deal", source: "ZDNet Cloud", x: 78, y: 65, delay: 4 },
+    { title: "Kubernetes 2.0 released", source: "The New Stack", x: 3,  y: 60, delay: 6 },
+  ];
+
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#0A0F1E",
+      background: "#050A18",
       fontFamily: "'Georgia', serif",
       color: "#ffffff",
       overflowX: "hidden",
     }}>
 
-      {/* ── Animated background particles ── */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
-        {Array.from({ length: 40 }).map((_, i) => (
-          <div key={i} style={{
-            position: "absolute",
-            width: Math.random() * 2 + 1,
-            height: Math.random() * 2 + 1,
-            background: "rgba(255,255,255,0.4)",
-            borderRadius: "50%",
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `twinkle ${Math.random() * 4 + 2}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 4}s`,
-          }} />
-        ))}
-      </div>
-
       <style>{`
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.4); }
+        @keyframes floatNode {
+          0%, 100% { transform: translateY(0px) scale(1); opacity: 0.6; }
+          50% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+        }
+        @keyframes driftCard {
+          0%, 100% { transform: translateY(0px) rotate(-1deg); opacity: 0.6; }
+          50% { transform: translateY(-30px) rotate(1deg); opacity: 0.9; }
         }
         @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(30px); }
+          from { opacity: 0; transform: translateY(40px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes shimmer {
@@ -39,76 +204,164 @@ export default function Landing() {
           100% { background-position: 200% center; }
         }
         @keyframes pulse-ring {
-          0% { transform: scale(0.9); opacity: 1; }
-          100% { transform: scale(1.4); opacity: 0; }
+          0% { transform: scale(1); opacity: 0.8; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes spin-reverse {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(-360deg); }
+        }
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(76,154,255,0.3); }
+          50% { box-shadow: 0 0 60px rgba(76,154,255,0.8); }
+        }
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-60px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(60px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes countUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .login-btn {
+          transition: all 0.25s ease !important;
         }
         .login-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 32px rgba(201,168,76,0.4);
+          transform: translateY(-3px) !important;
+          box-shadow: 0 12px 40px rgba(76,154,255,0.5) !important;
+        }
+        .feature-card {
+          transition: all 0.3s cubic-bezier(0.16,1,0.3,1) !important;
         }
         .feature-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(201,168,76,0.4);
+          transform: translateY(-8px) !important;
+          border-color: rgba(76,154,255,0.4) !important;
+          background: rgba(76,154,255,0.08) !important;
+        }
+        .scroll-reveal {
+          opacity: 0;
+          transform: translateY(40px);
+          transition: all 0.7s cubic-bezier(0.16,1,0.3,1);
+        }
+        .scroll-reveal.visible {
+          opacity: 1;
+          transform: translateY(0);
         }
       `}</style>
+
+      {/* ── Canvas network background ── */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          opacity: 0.6,
+        }}
+      />
+
+      {/* ── Floating nodes ── */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+        {floatingNodes.map((node, i) => (
+          <FloatingNode key={i} {...node} />
+        ))}
+      </div>
+
+      {/* ── Mouse parallax glow ── */}
+      <div style={{
+        position: "fixed",
+        width: 600,
+        height: 600,
+        borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(76,154,255,0.06) 0%, transparent 70%)",
+        left: `${mouseX}%`,
+        top: `${mouseY}%`,
+        transform: "translate(-50%, -50%)",
+        pointerEvents: "none",
+        zIndex: 0,
+        transition: "left 0.3s ease, top 0.3s ease",
+      }} />
+
+      {/* ── Floating news cards ── */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+        {floatingCards.map((card, i) => (
+          <NewsCard key={i} {...card} />
+        ))}
+      </div>
 
       {/* ── Navbar ── */}
       <nav style={{
         position: "sticky",
         top: 0,
-        zIndex: 50,
-        background: "rgba(10,15,30,0.85)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid rgba(201,168,76,0.2)",
-        padding: "16px 48px",
+        zIndex: 100,
+        background: "rgba(5,10,24,0.85)",
+        backdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(76,154,255,0.15)",
+        padding: "0 48px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        height: 64,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Spinning wheel — Gandhi's charkha inspired */}
-          <div style={{
-            width: 36, height: 36,
-            border: "2px solid #C9A84C",
-            borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            position: "relative",
-          }}>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {/* Animated chakra logo */}
+          <div style={{ position: "relative", width: 40, height: 40 }}>
+            {/* Outer ring spinning */}
             <div style={{
-              width: 2, height: 14,
-              background: "#C9A84C",
-              position: "absolute",
-              borderRadius: 2,
-            }} />
-            <div style={{
-              width: 14, height: 2,
-              background: "#C9A84C",
-              position: "absolute",
-              borderRadius: 2,
-            }} />
-            <div style={{
-              width: 6, height: 6,
-              background: "#C9A84C",
+              position: "absolute", inset: 0,
+              border: "2px solid rgba(76,154,255,0.4)",
               borderRadius: "50%",
+              animation: "spin-slow 8s linear infinite",
+              borderTopColor: "#4C9AFF",
+            }} />
+            {/* Inner ring spinning reverse */}
+            <div style={{
+              position: "absolute", inset: 6,
+              border: "1.5px solid rgba(201,168,76,0.4)",
+              borderRadius: "50%",
+              animation: "spin-reverse 5s linear infinite",
+              borderTopColor: "#C9A84C",
+            }} />
+            {/* Center dot */}
+            <div style={{
+              position: "absolute",
+              inset: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 6, height: 6,
+              borderRadius: "50%",
+              background: "#4C9AFF",
+              boxShadow: "0 0 8px #4C9AFF",
             }} />
           </div>
+
           <div>
             <div style={{
-              fontSize: 20, fontWeight: 700,
-              letterSpacing: "0.05em",
-              background: "linear-gradient(135deg, #C9A84C, #F0D080, #C9A84C)",
+              fontSize: 22, fontWeight: 700,
+              background: "linear-gradient(135deg, #4C9AFF, #C9A84C)",
               backgroundSize: "200% auto",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
-              animation: "shimmer 3s linear infinite",
+              animation: "shimmer 4s linear infinite",
+              letterSpacing: "0.02em",
             }}>
               Navjivan
             </div>
             <div style={{
-              fontSize: 9, letterSpacing: "2px",
-              color: "rgba(201,168,76,0.6)",
+              fontSize: 8, letterSpacing: "2.5px",
+              color: "rgba(76,154,255,0.5)",
               textTransform: "uppercase",
               fontFamily: "sans-serif",
+              marginTop: -2,
             }}>
               Est. 1919 · Reborn in AI
             </div>
@@ -119,97 +372,119 @@ export default function Landing() {
           className="login-btn"
           onClick={() => window.location.href = "/api/auth/google"}
           style={{
-            background: "linear-gradient(135deg, #C9A84C, #A07830)",
-            color: "#0A0F1E",
-            border: "none",
-            borderRadius: 6,
+            background: "linear-gradient(135deg, #1a6fd8, #0052CC)",
+            color: "#ffffff",
+            border: "1px solid rgba(76,154,255,0.3)",
+            borderRadius: 8,
             padding: "10px 24px",
             fontSize: 14,
-            fontWeight: 700,
+            fontWeight: 600,
             cursor: "pointer",
             fontFamily: "sans-serif",
-            letterSpacing: "0.5px",
-            transition: "all 0.2s ease",
+            letterSpacing: "0.3px",
           }}
-          data-testid="button-login"
         >
           Sign in with Google
         </button>
       </nav>
 
       {/* ── Hero ── */}
-      <section style={{
-        position: "relative",
-        zIndex: 1,
-        minHeight: "90vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        textAlign: "center",
-        padding: "80px 24px",
-        animation: "fadeUp 0.8s ease forwards",
-      }}>
-        {/* Glow behind hero */}
+      <section
+        ref={heroRef}
+        style={{
+          position: "relative",
+          zIndex: 1,
+          minHeight: "92vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "80px 24px",
+        }}
+      >
+        {/* Central glow */}
         <div style={{
           position: "absolute",
-          width: 600, height: 600,
-          background: "radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)",
+          width: 800, height: 800,
+          background: "radial-gradient(circle, rgba(76,154,255,0.07) 0%, transparent 65%)",
           borderRadius: "50%",
           top: "50%", left: "50%",
           transform: "translate(-50%, -50%)",
           pointerEvents: "none",
+          animation: "glow-pulse 4s ease-in-out infinite",
         }} />
 
-        <div style={{ maxWidth: 760, position: "relative" }}>
-          {/* Gandhi quote */}
+        <div style={{
+          maxWidth: 800,
+          position: "relative",
+          animation: "fadeUp 1s cubic-bezier(0.16,1,0.3,1) forwards",
+        }}>
+          {/* Badge */}
           <div style={{
-            display: "inline-block",
-            border: "1px solid rgba(201,168,76,0.3)",
-            borderRadius: 2,
-            padding: "8px 20px",
-            marginBottom: 32,
-            fontSize: 12,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            border: "1px solid rgba(76,154,255,0.3)",
+            borderRadius: 999,
+            padding: "6px 18px",
+            marginBottom: 40,
+            fontSize: 11,
             letterSpacing: "2px",
-            color: "#C9A84C",
+            color: "#4C9AFF",
             textTransform: "uppercase",
             fontFamily: "sans-serif",
+            background: "rgba(76,154,255,0.06)",
+            backdropFilter: "blur(8px)",
           }}>
-            Founded in the spirit of Mahatma Gandhi's Navjivan · 1919
+            <span style={{
+              width: 6, height: 6,
+              borderRadius: "50%",
+              background: "#4C9AFF",
+              boxShadow: "0 0 6px #4C9AFF",
+              animation: "glow-pulse 2s infinite",
+            }} />
+            Founded in the spirit of Gandhi's Navjivan · 1919
           </div>
 
+          {/* Headline */}
           <h1 style={{
-            fontSize: "clamp(40px, 7vw, 72px)",
+            fontSize: "clamp(36px, 6vw, 68px)",
             fontWeight: 700,
-            lineHeight: 1.15,
-            marginBottom: 24,
+            lineHeight: 1.1,
+            marginBottom: 20,
             letterSpacing: "-1px",
           }}>
             The morning briefing for
+            <br />
             <span style={{
-              display: "block",
-              background: "linear-gradient(135deg, #C9A84C, #F0D080)",
+              background: "linear-gradient(135deg, #4C9AFF 0%, #C9A84C 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
-              marginTop: 8,
             }}>
-              Cloud & Technology
+              {typedText}
+              <span style={{
+                opacity: showCursor ? 1 : 0,
+                WebkitTextFillColor: "#4C9AFF",
+                transition: "opacity 0.1s",
+              }}>|</span>
             </span>
           </h1>
 
+          {/* Gandhi quote */}
           <p style={{
-            fontSize: 18,
+            fontSize: 17,
             lineHeight: 1.8,
-            color: "rgba(255,255,255,0.6)",
-            maxWidth: 560,
-            margin: "0 auto 16px",
+            color: "rgba(255,255,255,0.5)",
+            maxWidth: 520,
+            margin: "0 auto 8px",
             fontStyle: "italic",
           }}>
             "Be the change you wish to see in the world."
           </p>
           <p style={{
-            fontSize: 13,
+            fontSize: 12,
             color: "rgba(201,168,76,0.5)",
-            marginBottom: 48,
+            marginBottom: 40,
             fontFamily: "sans-serif",
             letterSpacing: "1px",
           }}>
@@ -219,81 +494,115 @@ export default function Landing() {
           <p style={{
             fontSize: 16,
             lineHeight: 1.7,
-            color: "rgba(255,255,255,0.55)",
-            maxWidth: 520,
-            margin: "0 auto 48px",
+            color: "rgba(255,255,255,0.5)",
+            maxWidth: 480,
+            margin: "0 auto 52px",
             fontFamily: "sans-serif",
           }}>
             Track AWS, Google Cloud, and Microsoft Azure.
-            Receive AI-curated intelligence every morning at 9:00 AM IST.
+            AI-curated intelligence every morning at 9:00 AM IST.
           </p>
 
-          {/* CTA Button */}
+          {/* CTA */}
           <div style={{ position: "relative", display: "inline-block" }}>
             <div style={{
               position: "absolute",
-              inset: -4,
-              borderRadius: 10,
-              background: "rgba(201,168,76,0.2)",
-              animation: "pulse-ring 2s ease-out infinite",
+              inset: -6,
+              borderRadius: 14,
+              background: "rgba(76,154,255,0.2)",
+              animation: "pulse-ring 2.5s ease-out infinite",
             }} />
             <button
               className="login-btn"
               onClick={() => window.location.href = "/api/auth/google"}
               style={{
                 position: "relative",
-                background: "linear-gradient(135deg, #C9A84C, #A07830)",
-                color: "#0A0F1E",
-                border: "none",
-                borderRadius: 8,
-                padding: "16px 40px",
-                fontSize: 16,
+                background: "linear-gradient(135deg, #1a6fd8 0%, #0052CC 100%)",
+                color: "#ffffff",
+                border: "1px solid rgba(76,154,255,0.4)",
+                borderRadius: 10,
+                padding: "18px 48px",
+                fontSize: 17,
                 fontWeight: 700,
                 cursor: "pointer",
                 fontFamily: "sans-serif",
-                letterSpacing: "0.5px",
-                transition: "all 0.2s ease",
+                letterSpacing: "0.3px",
+                boxShadow: "0 4px 24px rgba(76,154,255,0.3)",
               }}
-              data-testid="button-hero-cta"
             >
               Begin Your Journey →
             </button>
           </div>
 
           <p style={{
-            marginTop: 16,
+            marginTop: 20,
             fontSize: 12,
-            color: "rgba(255,255,255,0.3)",
+            color: "rgba(255,255,255,0.25)",
             fontFamily: "sans-serif",
           }}>
             Free · No credit card · Delivered daily at 9:00 AM IST
           </p>
+
+          {/* Stats row */}
+          <div style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 48,
+            marginTop: 64,
+            flexWrap: "wrap",
+          }}>
+            {[
+              { value: "3", label: "Cloud Platforms" },
+              { value: "9AM", label: "Daily Delivery IST" },
+              { value: "AI", label: "Powered Summaries" },
+            ].map((stat, i) => (
+              <div key={i} style={{ textAlign: "center", animation: `countUp 0.6s ease forwards`, animationDelay: `${i * 0.2 + 0.5}s`, opacity: 0 }}>
+                <div style={{
+                  fontSize: 32, fontWeight: 700,
+                  background: "linear-gradient(135deg, #4C9AFF, #C9A84C)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  marginBottom: 4,
+                }}>
+                  {stat.value}
+                </div>
+                <div style={{
+                  fontSize: 12, color: "rgba(255,255,255,0.4)",
+                  fontFamily: "sans-serif",
+                  letterSpacing: "1px",
+                  textTransform: "uppercase",
+                }}>
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── How it works ── */}
       <section style={{
         position: "relative", zIndex: 1,
-        padding: "80px 48px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        padding: "100px 48px",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
       }}>
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 56 }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
             <div style={{
               fontSize: 11, letterSpacing: "3px",
-              color: "#C9A84C", textTransform: "uppercase",
-              fontFamily: "sans-serif", marginBottom: 12,
+              color: "#4C9AFF", textTransform: "uppercase",
+              fontFamily: "sans-serif", marginBottom: 14,
             }}>
               How It Works
             </div>
-            <h2 style={{ fontSize: 36, fontWeight: 700, margin: 0 }}>
+            <h2 style={{ fontSize: 40, fontWeight: 700, margin: 0 }}>
               Three steps to stay ahead
             </h2>
           </div>
 
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
             gap: 24,
           }}>
             {[
@@ -301,53 +610,61 @@ export default function Landing() {
                 number: "01",
                 emoji: "☁️",
                 title: "Select Cloud Platforms",
-                desc: "Choose from AWS, Google Cloud, or Microsoft Azure — the platforms shaping tomorrow's infrastructure.",
+                desc: "Choose from AWS, Google Cloud, or Microsoft Azure — the three platforms shaping tomorrow's infrastructure.",
+                color: "#4C9AFF",
               },
               {
                 number: "02",
                 emoji: "🤖",
                 title: "AI Reads Everything",
-                desc: "Our AI scans official blogs, tech news, and RSS feeds to find what actually matters to you.",
+                desc: "Our Llama AI scans official blogs, tech publications, and RSS feeds to surface what actually matters.",
+                color: "#C9A84C",
               },
               {
                 number: "03",
                 emoji: "📬",
                 title: "Inbox by 9 AM",
-                desc: "A beautifully written narrative briefing arrives every morning. Read it in 3 minutes. Know everything.",
+                desc: "A narrative briefing with images arrives every morning. Read it in 3 minutes. Know everything.",
+                color: "#4C9AFF",
               },
             ].map((item, i) => (
               <div
                 key={i}
                 className="feature-card"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 12,
-                  padding: "32px 28px",
-                  transition: "all 0.3s ease",
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 16,
+                  padding: "36px 32px",
                   cursor: "default",
+                  position: "relative",
+                  overflow: "hidden",
                 }}
               >
+                {/* Card glow on hover via border color change handled by CSS */}
                 <div style={{
                   fontSize: 11, fontWeight: 700,
-                  color: "rgba(201,168,76,0.5)",
-                  letterSpacing: "2px",
+                  color: item.color,
+                  letterSpacing: "3px",
                   fontFamily: "sans-serif",
-                  marginBottom: 16,
+                  marginBottom: 20,
+                  opacity: 0.6,
                 }}>
                   {item.number}
                 </div>
-                <div style={{ fontSize: 36, marginBottom: 16 }}>{item.emoji}</div>
+                <div style={{ fontSize: 40, marginBottom: 18 }}>{item.emoji}</div>
                 <h3 style={{
-                  fontSize: 18, fontWeight: 700,
-                  marginBottom: 12, margin: "0 0 12px",
+                  fontSize: 19, fontWeight: 700,
+                  marginBottom: 12,
+                  color: "#ffffff",
                 }}>
                   {item.title}
                 </h3>
                 <p style={{
-                  fontSize: 14, lineHeight: 1.7,
-                  color: "rgba(255,255,255,0.5)",
-                  fontFamily: "sans-serif", margin: 0,
+                  fontSize: 14, lineHeight: 1.75,
+                  color: "rgba(255,255,255,0.45)",
+                  fontFamily: "sans-serif",
+                  margin: 0,
                 }}>
                   {item.desc}
                 </p>
@@ -357,50 +674,132 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Gandhi inspiration section ── */}
+      {/* ── Live feed preview ── */}
       <section style={{
         position: "relative", zIndex: 1,
         padding: "80px 48px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+      }}>
+        <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
+          <div style={{
+            fontSize: 11, letterSpacing: "3px",
+            color: "#C9A84C", textTransform: "uppercase",
+            fontFamily: "sans-serif", marginBottom: 14,
+          }}>
+            What You'll Receive
+          </div>
+          <h2 style={{ fontSize: 36, fontWeight: 700, marginBottom: 48 }}>
+            Stories like these, every morning
+          </h2>
+
+          {/* Sample article cards */}
+          {[
+            {
+              headline: "AWS Launches Next-Gen AI Inference Chips for Enterprise",
+              summary: "🔷 Deep in the silicon labs of Amazon's hardware division, a quiet revolution is taking shape. AWS has unveiled its latest Trainium2 chips, purpose-built for large language model inference at scale — a move that signals the company's intent to own the full AI stack from cloud to chip.",
+              source: "AWS Blog",
+              color: "#FF9900",
+            },
+            {
+              headline: "Google Cloud Expands Southeast Asia Presence with 3 New Regions",
+              summary: "🌏 The race for cloud dominance in Asia-Pacific is accelerating. Google Cloud's strategic expansion into three new Southeast Asian markets reflects a calculated bet on the region's surging digital economy, positioning the platform to capture enterprise workloads currently dominated by local providers.",
+              source: "Google Cloud Blog",
+              color: "#4285F4",
+            },
+          ].map((article, i) => (
+            <div key={i} style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 14,
+              padding: "28px 32px",
+              marginBottom: 20,
+              textAlign: "left",
+              animation: `slideIn${i === 0 ? "Left" : "Right"} 0.8s cubic-bezier(0.16,1,0.3,1) forwards`,
+              animationDelay: `${i * 0.2}s`,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                marginBottom: 12,
+              }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: article.color,
+                  boxShadow: `0 0 6px ${article.color}`,
+                }} />
+                <span style={{
+                  fontSize: 11, color: article.color,
+                  fontFamily: "sans-serif",
+                  letterSpacing: "1.5px",
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                }}>
+                  {article.source}
+                </span>
+              </div>
+              <h4 style={{
+                fontSize: 17, fontWeight: 700,
+                marginBottom: 12, color: "#ffffff",
+                lineHeight: 1.35,
+              }}>
+                {article.headline}
+              </h4>
+              <p style={{
+                fontSize: 14, lineHeight: 1.75,
+                color: "rgba(255,255,255,0.5)",
+                fontFamily: "sans-serif",
+                margin: 0,
+              }}>
+                {article.summary}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Gandhi section ── */}
+      <section style={{
+        position: "relative", zIndex: 1,
+        padding: "100px 48px",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
         textAlign: "center",
       }}>
-        <div style={{ maxWidth: 680, margin: "0 auto" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <div style={{
-            width: 60, height: 1,
-            background: "#C9A84C",
-            margin: "0 auto 32px",
+            width: 1, height: 60,
+            background: "linear-gradient(to bottom, transparent, #C9A84C)",
+            margin: "0 auto 40px",
           }} />
           <blockquote style={{
-            fontSize: "clamp(20px, 3vw, 28px)",
-            lineHeight: 1.6,
+            fontSize: "clamp(20px, 3vw, 26px)",
+            lineHeight: 1.65,
             fontStyle: "italic",
-            color: "rgba(255,255,255,0.8)",
-            margin: "0 0 24px",
+            color: "rgba(255,255,255,0.75)",
+            margin: "0 0 20px",
           }}>
             "In a gentle way, you can shake the world."
           </blockquote>
           <p style={{
-            fontSize: 13, color: "#C9A84C",
+            fontSize: 12, color: "#C9A84C",
             fontFamily: "sans-serif",
             letterSpacing: "2px",
             textTransform: "uppercase",
-            margin: "0 0 32px",
+            margin: "0 0 36px",
           }}>
             — Mahatma Gandhi, Navjivan, 1919
           </p>
           <p style={{
-            fontSize: 15, lineHeight: 1.8,
-            color: "rgba(255,255,255,0.45)",
+            fontSize: 15, lineHeight: 1.85,
+            color: "rgba(255,255,255,0.38)",
             fontFamily: "sans-serif",
           }}>
-            Navjivan — meaning "New Life" in Gujarati — was Gandhi's newspaper
-            that shaped a nation's thinking. We carry that spirit forward,
-            bringing clarity and wisdom to the age of cloud computing.
+            Navjivan — "New Life" in Gujarati — was Gandhi's newspaper that shaped a
+            nation's thinking. We carry that spirit forward, bringing clarity and
+            wisdom to the age of cloud computing.
           </p>
           <div style={{
-            width: 60, height: 1,
-            background: "#C9A84C",
-            margin: "32px auto 0",
+            width: 1, height: 60,
+            background: "linear-gradient(to top, transparent, #C9A84C)",
+            margin: "40px auto 0",
           }} />
         </div>
       </section>
@@ -408,51 +807,55 @@ export default function Landing() {
       {/* ── Final CTA ── */}
       <section style={{
         position: "relative", zIndex: 1,
-        padding: "80px 48px",
+        padding: "100px 48px",
         textAlign: "center",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
       }}>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <h2 style={{
-            fontSize: 36, fontWeight: 700,
-            marginBottom: 16,
-          }}>
+          <h2 style={{ fontSize: 40, fontWeight: 700, marginBottom: 16 }}>
             Ready for your new life?
           </h2>
           <p style={{
             fontSize: 16, lineHeight: 1.7,
-            color: "rgba(255,255,255,0.5)",
-            fontFamily: "sans-serif",
-            marginBottom: 40,
+            color: "rgba(255,255,255,0.45)",
+            fontFamily: "sans-serif", marginBottom: 48,
           }}>
             Join professionals who start every morning with Navjivan.
           </p>
-          <button
-            className="login-btn"
-            onClick={() => window.location.href = "/api/auth/google"}
-            style={{
-              background: "linear-gradient(135deg, #C9A84C, #A07830)",
-              color: "#0A0F1E",
-              border: "none",
-              borderRadius: 8,
-              padding: "16px 40px",
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "sans-serif",
-              transition: "all 0.2s ease",
-            }}
-            data-testid="button-final-cta"
-          >
-            Get Started Free →
-          </button>
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <div style={{
+              position: "absolute", inset: -6,
+              borderRadius: 14,
+              background: "rgba(76,154,255,0.15)",
+              animation: "pulse-ring 2.5s ease-out infinite",
+            }} />
+            <button
+              className="login-btn"
+              onClick={() => window.location.href = "/api/auth/google"}
+              style={{
+                position: "relative",
+                background: "linear-gradient(135deg, #1a6fd8, #0052CC)",
+                color: "#ffffff",
+                border: "1px solid rgba(76,154,255,0.3)",
+                borderRadius: 10,
+                padding: "18px 48px",
+                fontSize: 17,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "sans-serif",
+                boxShadow: "0 4px 24px rgba(76,154,255,0.25)",
+              }}
+            >
+              Get Started Free →
+            </button>
+          </div>
         </div>
       </section>
 
       {/* ── Footer ── */}
       <footer style={{
         position: "relative", zIndex: 1,
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
         padding: "32px 48px",
         display: "flex",
         alignItems: "center",
@@ -461,17 +864,17 @@ export default function Landing() {
         gap: 16,
       }}>
         <div style={{
-          fontSize: 13,
-          color: "rgba(255,255,255,0.25)",
+          fontSize: 12,
+          color: "rgba(255,255,255,0.2)",
           fontFamily: "sans-serif",
         }}>
-          © {new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.
+          © {new Date().getFullYear()} Navjivan. Inspired by Gandhi's newspaper of 1919.
         </div>
         <div style={{ display: "flex", gap: 24 }}>
-          {["Privacy Policy", "Terms of Service"].map((link) => (
+          {["Privacy Policy", "Terms of Service"].map(link => (
             <a key={link} href="#" style={{
               fontSize: 12,
-              color: "rgba(255,255,255,0.25)",
+              color: "rgba(255,255,255,0.2)",
               textDecoration: "none",
               fontFamily: "sans-serif",
             }}>
@@ -480,7 +883,6 @@ export default function Landing() {
           ))}
         </div>
       </footer>
-
     </div>
   );
 }
