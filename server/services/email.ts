@@ -64,12 +64,12 @@ const htmlBody = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Payment Chronicle</title>
+  <title>Navjivan</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background-color: #F7F5F0;
+      background-color: #EEF4FB;
       font-family: 'DM Sans', Arial, sans-serif;
       color: #1a1a1a;
       padding: 32px 16px;
@@ -78,122 +78,96 @@ const htmlBody = `<!DOCTYPE html>
       max-width: 620px;
       margin: 0 auto;
       background: #FFFFFF;
-      border-radius: 4px;
+      border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 24px rgba(0,0,0,0.07);
+      box-shadow: 0 4px 32px rgba(0,82,204,0.10);
     }
-
-    /* ── Header ── */
     .header {
-      background: #0F1B2D;
+      background: linear-gradient(135deg, #0052CC 0%, #0747A6 100%);
       padding: 40px 48px 32px;
       text-align: center;
-      border-bottom: 3px solid #C9A84C;
+      border-bottom: 4px solid #4C9AFF;
     }
     .header-eyebrow {
-      font-family: 'DM Sans', sans-serif;
       font-size: 10px;
       font-weight: 500;
       letter-spacing: 3px;
-      color: #C9A84C;
+      color: #4C9AFF;
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      font-family: 'DM Sans', sans-serif;
     }
     .header-title {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 28px;
+      font-size: 32px;
       font-weight: 700;
       color: #FFFFFF;
-      letter-spacing: -0.3px;
-      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
     }
     .header-byline {
-      font-family: 'DM Sans', sans-serif;
       font-size: 11px;
-      color: rgba(255,255,255,0.4);
+      color: rgba(255,255,255,0.5);
       letter-spacing: 2px;
       text-transform: uppercase;
       margin-bottom: 20px;
+      font-family: 'DM Sans', sans-serif;
     }
     .header-meta {
       display: inline-block;
-      background: rgba(201,168,76,0.12);
-      border: 1px solid rgba(201,168,76,0.3);
-      border-radius: 2px;
-      padding: 6px 16px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 4px;
+      padding: 6px 18px;
       font-size: 12px;
-      color: rgba(255,255,255,0.65);
+      color: rgba(255,255,255,0.8);
       font-family: 'DM Sans', sans-serif;
     }
-    .header-meta strong {
-      color: #C9A84C;
-      font-weight: 500;
-    }
-
-    /* ── Edition bar ── */
+    .header-meta strong { color: #FFFFFF; font-weight: 600; }
     .edition-bar {
-      background: #F7F5F0;
-      border-bottom: 1px solid #E8E4DC;
+      background: #F0F6FF;
+      border-bottom: 1px solid #DEEBFF;
       padding: 12px 48px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .edition-date {
-      font-size: 12px;
-      color: #888;
-      font-family: 'DM Sans', sans-serif;
-      letter-spacing: 0.5px;
-    }
-    .edition-companies {
-      font-size: 11px;
-      color: #C9A84C;
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-    }
-
-    /* ── Body ── */
-    .body-wrap {
-      padding: 0 48px 40px;
-      background: #FFFFFF;
-    }
-
-    /* ── Article ── */
-    .article {
-      padding: 32px 0;
-      border-bottom: 1px solid #EEEBE4;
-    }
-    .article:last-child {
-      border-bottom: none;
-    }
+    .edition-date { font-size: 12px; color: #5E6C84; font-family: 'DM Sans', sans-serif; }
+    .edition-companies { font-size: 11px; color: #0052CC; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+    .body-wrap { padding: 0 40px 40px; background: #FFFFFF; }
+    .article { padding: 32px 0; border-bottom: 1px solid #EBECF0; }
+    .article:last-child { border-bottom: none; }
     .article-number {
       font-size: 10px;
-      font-weight: 500;
+      font-weight: 600;
       letter-spacing: 2.5px;
-      color: #C9A84C;
+      color: #0052CC;
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       font-family: 'DM Sans', sans-serif;
+    }
+    .article-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: block;
     }
     .article-headline {
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 20px;
       font-weight: 700;
-      color: #0F1B2D;
+      color: #0747A6;
       line-height: 1.35;
       margin-bottom: 14px;
-      letter-spacing: -0.2px;
     }
     .article-summary {
       font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 15.5px;
-      line-height: 1.75;
+      font-size: 15px;
+      line-height: 1.8;
       color: #2D2D2D;
       font-weight: 300;
-    }
-    .article-summary em {
-      font-style: italic;
     }
     .article-footer {
       margin-top: 16px;
@@ -204,76 +178,71 @@ const htmlBody = `<!DOCTYPE html>
     .source-label {
       font-size: 11px;
       font-weight: 500;
-      color: #999;
+      color: #5E6C84;
       font-family: 'DM Sans', sans-serif;
       letter-spacing: 0.5px;
       text-transform: uppercase;
     }
-    .source-dot {
-      width: 3px;
-      height: 3px;
-      border-radius: 50%;
-      background: #CCC;
-      display: inline-block;
-    }
+    .source-dot { width: 3px; height: 3px; border-radius: 50%; background: #B3BAC5; display: inline-block; }
     .read-more {
       font-size: 12px;
-      color: #C9A84C;
+      color: #0052CC;
       text-decoration: none;
       font-family: 'DM Sans', sans-serif;
-      font-weight: 500;
-      letter-spacing: 0.3px;
+      font-weight: 600;
     }
-
-    /* ── Divider ── */
     .section-divider {
       height: 1px;
-      background: linear-gradient(to right, transparent, #E0DBD0, transparent);
-      margin: 0 48px;
+      background: linear-gradient(to right, transparent, #DEEBFF, transparent);
+      margin: 0 40px;
     }
-
-    /* ── Footer ── */
     .footer {
-      background: #0F1B2D;
+      background: linear-gradient(135deg, #0052CC 0%, #0747A6 100%);
       padding: 28px 48px;
       text-align: center;
     }
-    .footer p {
-      font-size: 11px;
-      color: rgba(255,255,255,0.3);
-      font-family: 'DM Sans', sans-serif;
-      line-height: 1.8;
-    }
-    .footer a {
-      color: rgba(201,168,76,0.7);
-      text-decoration: none;
-    }
+    .footer p { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'DM Sans', sans-serif; line-height: 1.8; }
+    .footer a { color: rgba(255,255,255,0.7); text-decoration: none; }
   </style>
 </head>
 <body>
   <div class="wrapper">
 
-    <!-- Header -->
     <div class="header">
-      <div class="header-eyebrow">Daily Intelligence Briefing</div>
-      <div class="header-title">Payment Chronicle</div>
-      <div class="header-byline">by Gajanan Pujari</div>
+      <div class="header-eyebrow">Daily Cloud Intelligence Briefing</div>
+      <div class="header-title">Navjivan</div>
+      <div class="header-byline">Est. 1919 · Reborn in AI</div>
       <div class="header-meta">
         <strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today
       </div>
     </div>
 
-    <!-- Edition bar -->
     <div class="edition-bar">
       <span class="edition-date">${formattedDate}</span>
       <span class="edition-companies">Tracking: ${newsletter.companies}</span>
     </div>
 
-    <!-- Articles -->
     <div class="body-wrap">
-      ${articles.map((article, index) => `
+      ${articles.map((article, index) => {
+        // ✅ Generate Unsplash image URL from headline keywords
+        const imageKeywords = article.headline
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, "")
+          .split(" ")
+          .filter((w: string) => w.length > 3)
+          .slice(0, 3)
+          .join(",");
+        const imageUrl = `https://source.unsplash.com/600x200/?${encodeURIComponent(imageKeywords + ",technology,cloud")}`;
+
+        return `
         <div class="article">
           <div class="article-number">Story ${index + 1} of ${articles.length}</div>
+          <img
+            src="${imageUrl}"
+            alt="${article.headline}"
+            class="article-image"
+            onerror="this.style.display='none'"
+          />
           <div class="article-headline">${article.headline}</div>
           <div class="article-summary">${article.summary}</div>
           <div class="article-footer">
@@ -282,13 +251,13 @@ const htmlBody = `<!DOCTYPE html>
             <a href="${article.sourceUrl}" class="read-more" target="_blank">Read full story →</a>
           </div>
         </div>
-      `).join('<div class="section-divider"></div>')}
+      `;
+      }).join('<div class="section-divider"></div>')}
     </div>
 
-    <!-- Footer -->
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Payment Chronicle by Gajanan Pujari. All rights reserved.</p>
-      <p style="margin-top:6px;">You're receiving this because you subscribed to daily payments industry intelligence.</p>
+      <p>© ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.</p>
+      <p style="margin-top:6px;">You're receiving this because you subscribed to daily cloud industry intelligence.</p>
       <p style="margin-top:4px;"><a href="#">Unsubscribe</a> &nbsp;·&nbsp; <a href="#">Privacy Policy</a></p>
     </div>
 
@@ -328,9 +297,9 @@ Read more: ${article.sourceUrl}
     }
 
     const mailOptions = {
-      from: process.env.SMTP_FROM || '"Payment Chronicle" <noreply@paymentchronicle.com>',
+      from: process.env.SMTP_FROM || '"Navjivan" <noreply@navjivan.com>',
       to: recipientEmail,
-      subject: `Payment Chronicle - ${formattedDate}`,
+      subject: `Navjivan - ${formattedDate}`,
       text: textBody,
       html: htmlBody,
       attachments,
