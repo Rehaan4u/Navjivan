@@ -69,13 +69,15 @@ const htmlBody = `<!DOCTYPE html>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background-color: #EEF4FB;
-      font-family: 'DM Sans', Arial, sans-serif;
-      color: #1a1a1a;
-      padding: 32px 16px;
-    }
+        background-color: #EEF4FB;
+        font-family: 'DM Sans', Arial, sans-serif;
+        color: #1a1a1a;
+        padding: 0;
+        margin: 0;
+      }
     .wrapper {
-      max-width: 620px;
+      max-width: 900px;
+      width: 100%
       margin: 0 auto;
       background: #FFFFFF;
       border-radius: 8px;

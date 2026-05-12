@@ -1,5 +1,530 @@
 import { useState, useEffect, useRef } from "react";
 
+function GandhiFigure() {
+  return (
+    <div style={{
+      position: "relative",
+      width: "100%",
+      height: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "flex-start",
+    }}>
+      <style>{`
+        @keyframes walk {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          25% { transform: translateY(-4px) rotate(0.5deg); }
+          75% { transform: translateY(4px) rotate(-0.5deg); }
+        }
+        @keyframes stickSwing {
+          0%, 100% { transform: rotate(-5deg); }
+          50% { transform: rotate(5deg); }
+        }
+        @keyframes cloudFloat1 {
+          0%, 100% { transform: translate(0px, 0px); opacity: 0.7; }
+          50% { transform: translate(8px, -12px); opacity: 1; }
+        }
+        @keyframes cloudFloat2 {
+          0%, 100% { transform: translate(0px, 0px); opacity: 0.5; }
+          50% { transform: translate(-10px, -8px); opacity: 0.9; }
+        }
+        @keyframes cloudFloat3 {
+          0%, 100% { transform: translate(0px, 0px); opacity: 0.6; }
+          50% { transform: translate(6px, 10px); opacity: 1; }
+        }
+        @keyframes globeRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes globeRotateReverse {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(-360deg); }
+        }
+        @keyframes orbitDot {
+          from { transform: rotate(0deg) translateX(180px) rotate(0deg); }
+          to { transform: rotate(360deg) translateX(180px) rotate(-360deg); }
+        }
+        @keyframes orbitDot2 {
+          from { transform: rotate(120deg) translateX(180px) rotate(-120deg); }
+          to { transform: rotate(480deg) translateX(180px) rotate(-480deg); }
+        }
+        @keyframes orbitDot3 {
+          from { transform: rotate(240deg) translateX(180px) rotate(-240deg); }
+          to { transform: rotate(600deg) translateX(180px) rotate(-600deg); }
+        }
+        @keyframes dataLine {
+          0% { stroke-dashoffset: 200; opacity: 0; }
+          20% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(76,154,255,0.4)); }
+          50% { filter: drop-shadow(0 0 24px rgba(76,154,255,0.9)); }
+        }
+        @keyframes legLeft {
+          0%, 100% { transform: rotate(-8deg); transform-origin: top center; }
+          50% { transform: rotate(8deg); transform-origin: top center; }
+        }
+        @keyframes legRight {
+          0%, 100% { transform: rotate(8deg); transform-origin: top center; }
+          50% { transform: rotate(-8deg); transform-origin: top center; }
+        }
+        @keyframes armSwing {
+          0%, 100% { transform: rotate(15deg); transform-origin: top center; }
+          50% { transform: rotate(-15deg); transform-origin: top center; }
+        }
+      `}</style>
+
+      <svg
+        viewBox="0 0 520 520"
+        width="520"
+        height="520"
+        style={{ overflow: "visible" }}
+      >
+        {/* ── Outer glow ring ── */}
+        <circle
+          cx="260" cy="300"
+          r="185"
+          fill="none"
+          stroke="rgba(76,154,255,0.08)"
+          strokeWidth="1"
+        />
+
+        {/* ── Globe base circle ── */}
+        <circle
+          cx="260" cy="300"
+          r="170"
+          fill="rgba(10,20,50,0.6)"
+          stroke="rgba(76,154,255,0.35)"
+          strokeWidth="1.5"
+          style={{ filter: "drop-shadow(0 0 20px rgba(76,154,255,0.3))" }}
+        />
+
+        {/* ── Globe latitude lines ── */}
+        {[0.2, 0.4, 0.6, 0.8].map((t, i) => {
+          const y = 300 - 170 + t * 340;
+          const halfW = Math.sqrt(Math.max(0, 170 * 170 - (y - 300) * (y - 300)));
+          return (
+            <ellipse
+              key={i}
+              cx="260" cy={y}
+              rx={halfW * 0.95} ry={halfW * 0.12}
+              fill="none"
+              stroke="rgba(76,154,255,0.12)"
+              strokeWidth="0.8"
+            />
+          );
+        })}
+
+        {/* ── Globe longitude lines (animated rotation) ── */}
+        <g style={{ transformOrigin: "260px 300px", animation: "globeRotate 20s linear infinite" }}>
+          {[0, 30, 60, 90, 120, 150].map((angle, i) => (
+            <ellipse
+              key={i}
+              cx="260" cy="300"
+              rx="50" ry="170"
+              fill="none"
+              stroke="rgba(76,154,255,0.10)"
+              strokeWidth="0.8"
+              transform={`rotate(${angle} 260 300)`}
+            />
+          ))}
+        </g>
+
+        {/* ── Outer ring spinning ── */}
+        <circle
+          cx="260" cy="300"
+          r="200"
+          fill="none"
+          stroke="rgba(76,154,255,0.15)"
+          strokeWidth="1"
+          strokeDasharray="4 8"
+          style={{ transformOrigin: "260px 300px", animation: "globeRotate 30s linear infinite" }}
+        />
+
+        {/* ── Orbit ring ── */}
+        <ellipse
+          cx="260" cy="300"
+          rx="200" ry="55"
+          fill="none"
+          stroke="rgba(76,154,255,0.15)"
+          strokeWidth="1"
+          transform="rotate(-20 260 300)"
+        />
+
+        {/* ── Orbiting dots ── */}
+        <g style={{ transformOrigin: "260px 300px", animation: "orbitDot 8s linear infinite" }}>
+          <circle cx="260" cy="300" r="5" fill="#4C9AFF"
+            style={{ filter: "drop-shadow(0 0 6px #4C9AFF)" }} />
+        </g>
+        <g style={{ transformOrigin: "260px 300px", animation: "orbitDot2 8s linear infinite" }}>
+          <circle cx="260" cy="300" r="4" fill="#C9A84C"
+            style={{ filter: "drop-shadow(0 0 6px #C9A84C)" }} />
+        </g>
+        <g style={{ transformOrigin: "260px 300px", animation: "orbitDot3 8s linear infinite" }}>
+          <circle cx="260" cy="300" r="3" fill="#4C9AFF"
+            style={{ filter: "drop-shadow(0 0 4px #4C9AFF)" }} />
+        </g>
+
+        {/* ── Animated data lines ── */}
+        {[
+          { x1: 110, y1: 200, x2: 260, y2: 300, delay: "0s" },
+          { x1: 410, y1: 180, x2: 260, y2: 300, delay: "1.5s" },
+          { x1: 150, y1: 420, x2: 260, y2: 300, delay: "3s" },
+          { x1: 380, y1: 400, x2: 260, y2: 300, delay: "4.5s" },
+        ].map((line, i) => (
+          <line
+            key={i}
+            x1={line.x1} y1={line.y1}
+            x2={line.x2} y2={line.y2}
+            stroke="#4C9AFF"
+            strokeWidth="0.8"
+            strokeDasharray="200"
+            strokeDashoffset="200"
+            opacity="0"
+            style={{
+              animation: "dataLine 3s ease-in-out infinite",
+              animationDelay: line.delay,
+            }}
+          />
+        ))}
+
+        {/* ── Cloud 1 (top left) — AWS style ── */}
+        <g style={{ animation: "cloudFloat1 5s ease-in-out infinite" }}>
+          <rect x="60" y="130" width="90" height="36"
+            rx="18"
+            fill="rgba(76,154,255,0.12)"
+            stroke="rgba(76,154,255,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="84" cy="130" r="18"
+            fill="rgba(76,154,255,0.12)"
+            stroke="rgba(76,154,255,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="112" cy="124" r="22"
+            fill="rgba(76,154,255,0.12)"
+            stroke="rgba(76,154,255,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="136" cy="130" r="16"
+            fill="rgba(76,154,255,0.12)"
+            stroke="rgba(76,154,255,0.4)"
+            strokeWidth="1"
+          />
+          <text x="105" y="154"
+            fill="#FF9900"
+            fontSize="8"
+            fontFamily="sans-serif"
+            fontWeight="700"
+            textAnchor="middle"
+            letterSpacing="1"
+          >AWS</text>
+        </g>
+
+        {/* ── Cloud 2 (top right) — GCP style ── */}
+        <g style={{ animation: "cloudFloat2 6s ease-in-out infinite", animationDelay: "1s" }}>
+          <rect x="340" y="110" width="100" height="36"
+            rx="18"
+            fill="rgba(66,133,244,0.12)"
+            stroke="rgba(66,133,244,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="366" cy="110" r="18"
+            fill="rgba(66,133,244,0.12)"
+            stroke="rgba(66,133,244,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="395" cy="104" r="22"
+            fill="rgba(66,133,244,0.12)"
+            stroke="rgba(66,133,244,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="420" cy="110" r="16"
+            fill="rgba(66,133,244,0.12)"
+            stroke="rgba(66,133,244,0.4)"
+            strokeWidth="1"
+          />
+          <text x="392" y="134"
+            fill="#4285F4"
+            fontSize="7"
+            fontFamily="sans-serif"
+            fontWeight="700"
+            textAnchor="middle"
+            letterSpacing="0.5"
+          >GOOGLE</text>
+        </g>
+
+        {/* ── Cloud 3 (right middle) — Azure style ── */}
+        <g style={{ animation: "cloudFloat3 7s ease-in-out infinite", animationDelay: "2s" }}>
+          <rect x="370" y="260" width="95" height="34"
+            rx="17"
+            fill="rgba(0,120,212,0.12)"
+            stroke="rgba(0,120,212,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="394" cy="260" r="17"
+            fill="rgba(0,120,212,0.12)"
+            stroke="rgba(0,120,212,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="420" cy="255" r="21"
+            fill="rgba(0,120,212,0.12)"
+            stroke="rgba(0,120,212,0.4)"
+            strokeWidth="1"
+          />
+          <circle cx="444" cy="260" r="15"
+            fill="rgba(0,120,212,0.12)"
+            stroke="rgba(0,120,212,0.4)"
+            strokeWidth="1"
+          />
+          <text x="420" y="282"
+            fill="#0078D4"
+            fontSize="7"
+            fontFamily="sans-serif"
+            fontWeight="700"
+            textAnchor="middle"
+            letterSpacing="0.5"
+          >AZURE</text>
+        </g>
+
+        {/* ══════════════════════════════════
+            GANDHI FIGURE — walking forward
+            facing viewer, blue outline style
+        ══════════════════════════════════ */}
+
+        {/* Walking animation wrapper */}
+        <g style={{ animation: "walk 2s ease-in-out infinite" }}>
+
+          {/* ── Shadow on globe ── */}
+          <ellipse
+            cx="262" cy="385"
+            rx="28" ry="8"
+            fill="rgba(76,154,255,0.15)"
+          />
+
+          {/* ── Dhoti / lower robe ── */}
+          <path
+            d="M238 320 Q250 370 245 385 L262 380 L279 385 Q274 370 286 320 Z"
+            fill="rgba(76,154,255,0.08)"
+            stroke="#4C9AFF"
+            strokeWidth="1.2"
+          />
+
+          {/* ── Left leg (animated) ── */}
+          <g style={{
+            transformOrigin: "250px 350px",
+            animation: "legLeft 1s ease-in-out infinite",
+          }}>
+            <line
+              x1="250" y1="350"
+              x2="244" y2="385"
+              stroke="#4C9AFF"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            {/* Left foot */}
+            <ellipse cx="242" cy="387" rx="7" ry="3"
+              fill="rgba(76,154,255,0.2)"
+              stroke="#4C9AFF"
+              strokeWidth="1"
+            />
+          </g>
+
+          {/* ── Right leg (animated) ── */}
+          <g style={{
+            transformOrigin: "274px 350px",
+            animation: "legRight 1s ease-in-out infinite",
+          }}>
+            <line
+              x1="274" y1="350"
+              x2="280" y2="385"
+              stroke="#4C9AFF"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            {/* Right foot */}
+            <ellipse cx="282" cy="387" rx="7" ry="3"
+              fill="rgba(76,154,255,0.2)"
+              stroke="#4C9AFF"
+              strokeWidth="1"
+            />
+          </g>
+
+          {/* ── Upper robe / shawl ── */}
+          <path
+            d="M238 265 Q230 280 232 310 L248 315 Q252 290 262 285 Q272 290 276 315 L292 310 Q294 280 286 265 Z"
+            fill="rgba(76,154,255,0.08)"
+            stroke="#4C9AFF"
+            strokeWidth="1.2"
+          />
+
+          {/* ── Shawl drape ── */}
+          <path
+            d="M238 265 Q220 275 218 295 Q230 298 240 285"
+            fill="none"
+            stroke="rgba(76,154,255,0.5)"
+            strokeWidth="1"
+          />
+
+          {/* ── Left arm + stick (animated) ── */}
+          <g style={{
+            transformOrigin: "238px 270px",
+            animation: "stickSwing 2s ease-in-out infinite",
+          }}>
+            {/* Arm */}
+            <line
+              x1="238" y1="270"
+              x2="225" y2="310"
+              stroke="#4C9AFF"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            {/* Walking stick */}
+            <line
+              x1="225" y1="310"
+              x2="215" y2="390"
+              stroke="#C9A84C"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            {/* Stick top knob */}
+            <circle cx="225" cy="310" r="3"
+              fill="#C9A84C"
+              style={{ filter: "drop-shadow(0 0 4px #C9A84C)" }}
+            />
+            {/* Stick bottom tip */}
+            <circle cx="215" cy="390" r="2.5"
+              fill="#C9A84C"
+            />
+          </g>
+
+          {/* ── Right arm (animated opposite) ── */}
+          <g style={{
+            transformOrigin: "286px 270px",
+            animation: "armSwing 2s ease-in-out infinite",
+          }}>
+            <line
+              x1="286" y1="270"
+              x2="298" y2="310"
+              stroke="#4C9AFF"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </g>
+
+          {/* ── Neck ── */}
+          <line
+            x1="262" y1="255"
+            x2="262" y2="268"
+            stroke="#4C9AFF"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+
+          {/* ── Head ── */}
+          <circle
+            cx="262" cy="245"
+            r="22"
+            fill="rgba(76,154,255,0.08)"
+            stroke="#4C9AFF"
+            strokeWidth="1.5"
+            style={{ filter: "drop-shadow(0 0 8px rgba(76,154,255,0.4))" }}
+          />
+
+          {/* ── Gandhi's round glasses ── */}
+          <circle cx="253" cy="246" r="6"
+            fill="none"
+            stroke="#4C9AFF"
+            strokeWidth="1.2"
+          />
+          <circle cx="271" cy="246" r="6"
+            fill="none"
+            stroke="#4C9AFF"
+            strokeWidth="1.2"
+          />
+          {/* Bridge of glasses */}
+          <line x1="259" y1="246" x2="265" y2="246"
+            stroke="#4C9AFF"
+            strokeWidth="1"
+          />
+          {/* Left arm of glasses */}
+          <line x1="247" y1="246" x2="241" y2="248"
+            stroke="#4C9AFF"
+            strokeWidth="1"
+          />
+          {/* Right arm of glasses */}
+          <line x1="277" y1="246" x2="283" y2="248"
+            stroke="#4C9AFF"
+            strokeWidth="1"
+          />
+
+          {/* ── Nose ── */}
+          <path d="M262 249 Q264 254 262 256"
+            fill="none"
+            stroke="#4C9AFF"
+            strokeWidth="1"
+          />
+
+          {/* ── Ears ── */}
+          <path d="M240 244 Q236 247 240 252"
+            fill="none"
+            stroke="#4C9AFF"
+            strokeWidth="1.2"
+          />
+          <path d="M284 244 Q288 247 284 252"
+            fill="none"
+            stroke="#4C9AFF"
+            strokeWidth="1.2"
+          />
+
+          {/* ── Gandhi cap (topi) ── */}
+          <path
+            d="M242 234 Q262 222 282 234 Q278 228 262 226 Q246 228 242 234 Z"
+            fill="rgba(76,154,255,0.15)"
+            stroke="#4C9AFF"
+            strokeWidth="1.2"
+          />
+
+          {/* ── Slight smile ── */}
+          <path d="M256 252 Q262 257 268 252"
+            fill="none"
+            stroke="#4C9AFF"
+            strokeWidth="1"
+            strokeLinecap="round"
+          />
+
+        </g>
+        {/* End walking animation wrapper */}
+
+        {/* ── Tech node dots on globe ── */}
+        {[
+          { cx: 160, cy: 260, r: 3, delay: "0s" },
+          { cx: 350, cy: 240, r: 3, delay: "0.5s" },
+          { cx: 180, cy: 360, r: 3, delay: "1s" },
+          { cx: 340, cy: 350, r: 3, delay: "1.5s" },
+          { cx: 220, cy: 200, r: 3, delay: "2s" },
+          { cx: 310, cy: 195, r: 3, delay: "2.5s" },
+        ].map((dot, i) => (
+          <circle
+            key={i}
+            cx={dot.cx} cy={dot.cy}
+            r={dot.r}
+            fill="#4C9AFF"
+            style={{
+              filter: "drop-shadow(0 0 4px #4C9AFF)",
+              animation: `pulse-glow 2s ease-in-out infinite`,
+              animationDelay: dot.delay,
+            }}
+          />
+        ))}
+
+      </svg>
+    </div>
+  );
+}
+
 // ── Animated floating node for the network visualization ──
 function FloatingNode({ x, y, size, color, delay }: {
   x: number; y: number; size: number; color: string; delay: number;
@@ -64,7 +589,6 @@ export default function Landing() {
   const [typedText, setTypedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
   const heroRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const fullText = "Cloud & Technology";
 
@@ -104,63 +628,6 @@ export default function Landing() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // ── Canvas network animation ──
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    type Dot = { x: number; y: number; vx: number; vy: number };
-    const dots: Dot[] = Array.from({ length: 60 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-    }));
-
-    let animId: number;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      dots.forEach(dot => {
-        dot.x += dot.vx;
-        dot.y += dot.vy;
-        if (dot.x < 0 || dot.x > canvas.width) dot.vx *= -1;
-        if (dot.y < 0 || dot.y > canvas.height) dot.vy *= -1;
-
-        // Draw dot
-        ctx.beginPath();
-        ctx.arc(dot.x, dot.y, 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(76,154,255,0.4)";
-        ctx.fill();
-      });
-
-      // Draw connections
-      dots.forEach((a, i) => {
-        dots.slice(i + 1).forEach(b => {
-          const dist = Math.hypot(a.x - b.x, a.y - b.y);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(76,154,255,${0.15 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        });
-      });
-
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(animId);
-  }, []);
-
   const floatingNodes = [
     { x: 15, y: 20, size: 8,  color: "rgba(76,154,255,0.6)",  delay: 0 },
     { x: 80, y: 15, size: 12, color: "rgba(201,168,76,0.5)",  delay: 1 },
@@ -168,13 +635,6 @@ export default function Landing() {
     { x: 10, y: 70, size: 10, color: "rgba(201,168,76,0.4)",  delay: 0.5 },
     { x: 50, y: 85, size: 8,  color: "rgba(76,154,255,0.5)",  delay: 1.5 },
     { x: 70, y: 40, size: 5,  color: "rgba(201,168,76,0.6)",  delay: 3 },
-  ];
-
-  const floatingCards = [
-    { title: "AWS launches new AI inference chip", source: "AWS Blog", x: 5,  y: 25, delay: 0 },
-    { title: "Google Cloud expands Asia regions", source: "Google Cloud", x: 72, y: 20, delay: 2 },
-    { title: "Azure secures $2B enterprise deal", source: "ZDNet Cloud", x: 78, y: 65, delay: 4 },
-    { title: "Kubernetes 2.0 released", source: "The New Stack", x: 3,  y: 60, delay: 6 },
   ];
 
   return (
@@ -257,25 +717,6 @@ export default function Landing() {
         }
       `}</style>
 
-      {/* ── Canvas network background ── */}
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          opacity: 0.6,
-        }}
-      />
-
-      {/* ── Floating nodes ── */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
-        {floatingNodes.map((node, i) => (
-          <FloatingNode key={i} {...node} />
-        ))}
-      </div>
-
       {/* ── Mouse parallax glow ── */}
       <div style={{
         position: "fixed",
@@ -290,13 +731,6 @@ export default function Landing() {
         zIndex: 0,
         transition: "left 0.3s ease, top 0.3s ease",
       }} />
-
-      {/* ── Floating news cards ── */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
-        {floatingCards.map((card, i) => (
-          <NewsCard key={i} {...card} />
-        ))}
-      </div>
 
       {/* ── Navbar ── */}
       <nav style={{
@@ -389,35 +823,38 @@ export default function Landing() {
       </nav>
 
       {/* ── Hero ── */}
-      <section
-        ref={heroRef}
-        style={{
-          position: "relative",
-          zIndex: 1,
-          minHeight: "92vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          padding: "80px 24px",
-        }}
-      >
-        {/* Central glow */}
+          <section
+          ref={heroRef}
+          style={{
+            position: "relative",
+            zIndex: 1,
+            minHeight: "92vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            padding: "80px 80px",
+          }}
+        >
+        {/* Gandhi figure on the right */}
+            <div style={{
+              position: "absolute",
+              right: "-20px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 0,
+              opacity: 0.92,
+              pointerEvents: "none",
+              width: 520,
+              height: 520,
+            }}>
+              <GandhiFigure />
+            </div>
         <div style={{
-          position: "absolute",
-          width: 800, height: 800,
-          background: "radial-gradient(circle, rgba(76,154,255,0.07) 0%, transparent 65%)",
-          borderRadius: "50%",
-          top: "50%", left: "50%",
-          transform: "translate(-50%, -50%)",
-          pointerEvents: "none",
-          animation: "glow-pulse 4s ease-in-out infinite",
-        }} />
-
-        <div style={{
-          maxWidth: 800,
+          maxWidth: 580,
           position: "relative",
           animation: "fadeUp 1s cubic-bezier(0.16,1,0.3,1) forwards",
+          textAlign: "left",
+          zIndex: 2,
         }}>
           {/* Badge */}
           <div style={{
@@ -476,7 +913,7 @@ export default function Landing() {
             lineHeight: 1.8,
             color: "rgba(255,255,255,0.5)",
             maxWidth: 520,
-            margin: "0 auto 8px",
+            margin: "0 0 8px",
             fontStyle: "italic",
           }}>
             "Be the change you wish to see in the world."
@@ -546,7 +983,7 @@ export default function Landing() {
           {/* Stats row */}
           <div style={{
             display: "flex",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             gap: 48,
             marginTop: 64,
             flexWrap: "wrap",
