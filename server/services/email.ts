@@ -1,6 +1,5 @@
 import * as nodemailer from "nodemailer";
 import { storage } from "../storage";
-import fs from "fs";
 
 // Automatically detect if SMTP credentials are configured
 const USE_REAL_EMAIL = !!(
@@ -234,7 +233,9 @@ const htmlBody = `<!DOCTYPE html>
           .filter((w: string) => w.length > 3)
           .slice(0, 3)
           .join(",");
-        const imageUrl = `https://source.unsplash.com/600x200/?${encodeURIComponent(imageKeywords + ",technology,cloud")}`;
+          // ✅ Pollinations AI — free AI image generation, no API key needed
+const imagePrompt = `${article.headline}, cloud computing, technology, professional, digital art, blue theme`;
+const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=300&nologo=true`;
 
         return `
         <div class="article">
@@ -289,14 +290,8 @@ Read more: ${article.sourceUrl}
 © 2025 Payment Chronicle by Gajanan. All rights reserved.
 `;
 
-    // Prepare attachments
-    const attachments = [];
-    if (newsletter.pdfPath && fs.existsSync(newsletter.pdfPath)) {
-      attachments.push({
-        filename: `payment-chronicle-${formattedDate}.pdf`,
-        path: newsletter.pdfPath,
-      });
-    }
+// No PDF attachments — articles sent as email body only
+const attachments: any[] = [];
 
     const mailOptions = {
       from: process.env.SMTP_FROM || '"Navjivan" <noreply@navjivan.com>',
