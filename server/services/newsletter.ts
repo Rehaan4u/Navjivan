@@ -370,18 +370,22 @@ async function filterAlreadySentArticles(
     // ✅ storage only has getLastNewsletterBySubscription (returns one newsletter)
     // so we use getUserNewsletters via userId is not available here,
     // so we get the last newsletter and check its articles
-    const lastNewsletter = await storage.getLastNewsletterBySubscription(subscriptionId);
+  const lastNewsletter = await storage.getLastNewsletterBySubscription(subscriptionId);
 
-    if (lastNewsletter) {
-      // ✅ correct method name from storage.ts
-      const prevArticles = await storage.getNewsletterArticles(lastNewsletter.id);
-      prevArticles.forEach((a: Article) => sentUrls.add(a.sourceUrl));
-      console.log(
-        `[SENT-FILTER] Found ${prevArticles.length} articles in last newsletter`
-      );
-    } else {
-      console.log(`[SENT-FILTER] No previous newsletter found — all articles are fresh`);
-    }
+if (lastNewsletter) {
+  // Only filter articles from newsletters sent in the last 12 hours
+  // This prevents blocking articles when generating multiple times per day
+  const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  const newsletterTime = new Date(lastNewsletter.generatedAt!);
+  
+  if (newsletterTime > twelveHoursAgo) {
+    const prevArticles = await storage.getNewsletterArticles(lastNewsletter.id);
+    prevArticles.forEach((a: Article) => sentUrls.add(a.sourceUrl));
+    console.log(`[SENT-FILTER] Found ${prevArticles.length} articles in last newsletter (within 12h)`);
+  } else {
+    console.log(`[SENT-FILTER] Last newsletter was more than 12h ago — allowing all articles`);
+  }
+}
 
     console.log(`[SENT-FILTER] ${sentUrls.size} URLs already sent`);
 
