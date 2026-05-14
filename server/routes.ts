@@ -5,7 +5,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import { insertSubscriptionSchema } from "@shared/schema";
-import { triggerNewsletterGeneration } from "./services/scheduler";
+import { triggerNewsletterGeneration, triggerNewsletterForUser } from "./services/scheduler";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -150,17 +150,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manual newsletter trigger
-  app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res) => {
+app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res) => {
   const userId = req.user.claims.sub;
   console.log(`Manual newsletter generation triggered by user: ${userId}`);
-  
   res.json({ message: "Newsletter generation started", status: "processing" });
-  
-  // ✅ Only generate for the logged-in user, not all users
-  import("./services/scheduler").then(({ triggerNewsletterForUser }) => {
-    triggerNewsletterForUser(userId, "manual").catch(error => {
-      console.error("Background newsletter generation failed:", error);
-    });
+  // ✅ Only generate for the logged-in user — already imported at top
+  triggerNewsletterForUser(userId, "manual").catch((error: Error) => {
+    console.error("Background newsletter generation failed:", error);
   });
 });
 

@@ -2,7 +2,6 @@
 import cron from "node-cron";
 import { storage } from "../storage";
 import { generateNewsletterForSubscription } from "./newsletter";
-import { generateNewsletterPDF } from "./pdf";
 import { sendNewsletterEmail } from "./email";
 
 let schedulerRunning = false;
@@ -66,15 +65,6 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 
         console.log(`   ✅ Newsletter ${newsletter.id} ready`);
 
-        // Generate PDF
-        try {
-          const pdfPath = await generateNewsletterPDF(newsletter.id);
-          await storage.updateNewsletterPdf(newsletter.id, pdfPath);
-          console.log(`   📄 PDF generated: ${pdfPath}`);
-        } catch (error) {
-          console.error(`   ⚠️  PDF generation failed:`, error);
-          // Continue to email even if PDF fails
-        }
 
         // Send email — always send regardless of whether content is new or reused
         if (user?.email) {
@@ -118,7 +108,7 @@ async function runDailyNewsletterGeneration(triggerSource: string = "cron") {
 
     // Cleanup old newsletters after all subscriptions are processed
     console.log(`\n🧹 Running newsletter cleanup...`);
-    const uniqueUserIds = [...new Set(subscriptionsToProcess.map(s => s.userId))];
+    const uniqueUserIds = Array.from(new Set(subscriptionsToProcess.map(s => s.userId)));
     for (const userId of uniqueUserIds) {
       try {
         await storage.cleanupOldNewsletters(userId);
@@ -170,5 +160,65 @@ export function getSchedulerStatus() {
     lastRun: lastScheduledRun,
     nextRunUTC: "3:30 AM UTC",
     nextRunIST: "9:00 AM IST",
-  };
+   };
+  }
+
+  // ✅ Trigger newsletter only for a specific user
+export async function triggerNewsletterForUser(
+  userId: string,
+  triggerSource: string = "manual"
+) {
+  console.log(`\n🚀 Newsletter triggered for user: ${userId} (source: ${triggerSource})`);
+
+  const startTime = new Date();
+  let successCount = 0;
+  let failureCount = 0;
+
+  try {
+    const subscription = await storage.getSubscription(userId);
+
+    if (!subscription || !subscription.isActive) {
+      console.log(`⚠️  No active subscription for user ${userId}`);
+      return { success: false, message: "No active subscription found" };
+    }
+
+    const user = await storage.getUser(userId);
+    console.log(`📧 Processing subscription ${subscription.id}`);
+    console.log(`   User: ${user?.email || userId}`);
+    console.log(`   Companies: ${subscription.companies}`);
+
+    const newsletter = await generateNewsletterForSubscription(subscription.id);
+
+    if (!newsletter) {
+      console.log(`   ❌ Newsletter generation returned null`);
+      return { success: false, message: "Newsletter generation failed" };
+    }
+
+    console.log(`   ✅ Newsletter ${newsletter.id} ready`);
+
+    if (user?.email) {
+      await sendNewsletterEmail(newsletter.id, user.email);
+      console.log(`   ✉️  Email sent to ${user.email}`);
+      successCount++;
+    } else {
+      console.log(`   ⚠️  No email address for user ${userId}`);
+      failureCount++;
+    }
+
+    const duration = ((new Date().getTime() - startTime.getTime()) / 1000).toFixed(2);
+    console.log(`\n✅ Done for user ${userId} — ${duration}s`);
+
+    // Cleanup old newsletters
+    try {
+      await storage.cleanupOldNewsletters(userId);
+    } catch (error) {
+      console.error(`   ⚠️  Cleanup failed:`, error);
+    }
+
+    return { success: true, message: "Newsletter generated and sent" };
+
+  } catch (error) {
+    console.error(`❌ Error generating newsletter for user ${userId}:`, error);
+    return { success: false, message: String(error) };
+  }
 }
