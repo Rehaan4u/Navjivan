@@ -310,16 +310,17 @@ export default function Landing() {
             padding: "80px 80px",
           }}
         >
+
           {/* Gandhi image on the right */}
             <div style={{
               position: "absolute",
-              right: "-60px",
-              top: "50%",
-              transform: "translateY(-50%)",
+              right: "-120px",
+              top: "45%",
+              transform: "translateY(-55%)",
               zIndex: 0,
               pointerEvents: "none",
-              width: "55%",
-              maxWidth: 700,
+              width: "65%",
+              maxWidth: 820,
             }}>
               <img
                 src="/gandhi.png"
