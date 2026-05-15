@@ -135,18 +135,23 @@ const htmlBody = `<!DOCTYPE html>
     }
     .edition-date { font-size: 12px; color: #5E6C84; font-family: 'DM Sans', sans-serif; }
     .edition-companies { font-size: 11px; color: #0052CC; font-family: 'DM Sans', sans-serif; font-weight: 600; }
-    .body-wrap { padding: 0 40px 40px; background: #FFFFFF; }
-    .article { padding: 32px 0; border-bottom: 1px solid #EBECF0; }
+    .body-wrap { padding: 8px 40px 40px; background: #FFFFFF; }
+    .article { padding: 36px 0 32px; border-bottom: 2px solid #DEEBFF; margin-bottom: 8px;}
     .article:last-child { border-bottom: none; }
     .article-number {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 2.5px;
-      color: #0052CC;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-      font-family: 'DM Sans', sans-serif;
-    }
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        color: #0052CC;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+        font-family: 'DM Sans', sans-serif;
+        background: #EEF4FF;
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        border-left: 3px solid #0052CC;
+      }
     .article-image {
       width: 100%;
       height: 200px;
@@ -155,27 +160,45 @@ const htmlBody = `<!DOCTYPE html>
       margin-bottom: 16px;
       display: block;
     }
-    .article-headline {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 20px;
-      font-weight: 700;
-      color: #0747A6;
-      line-height: 1.35;
-      margin-bottom: 14px;
+    .article-image {
+      width: 100%;
+      height: 260px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      margin-top: 4px;
+      display: block;
+      border: 1px solid #DEEBFF;
     }
-    .article-summary {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 15px;
-      line-height: 1.8;
-      color: #2D2D2D;
-      font-weight: 300;
-    }
-    .article-footer {
-      margin-top: 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+      .article-headline {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 22px;
+        font-weight: 700;
+        color: #0747A6;
+        line-height: 1.4;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #EEF4FF;
+      }
+        .article-summary {
+        font-family: 'Source Serif 4', Georgia, serif;
+        font-size: 15.5px;
+        line-height: 1.85;
+        color: #1A1A2E;
+        font-weight: 300;
+        padding: 16px;
+        background: #F8FBFF;
+        border-radius: 6px;
+        border-left: 3px solid #4C9AFF;
+      }
+        .article-footer {
+        margin-top: 20px;
+        padding-top: 12px;
+        border-top: 1px solid #EBECF0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
     .source-label {
       font-size: 11px;
       font-weight: 500;
