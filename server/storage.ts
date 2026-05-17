@@ -28,6 +28,7 @@ export interface IStorage {
   createSubscription(subscription: InsertSubscription & { userId: string }): Promise<Subscription>;
   updateSubscription(userId: string, companies: string): Promise<Subscription>;
   getAllActiveSubscriptions(): Promise<Subscription[]>;
+  deactivateSubscription(userId: string): Promise<void>;
 
   // Newsletter operations
   createNewsletter(data: {
@@ -127,6 +128,13 @@ export class DatabaseStorage implements IStorage {
       .values(data)
       .returning();
     return subscription;
+  }
+
+  async deactivateSubscription(userId: string): Promise<void> {
+  await db
+    .update(subscriptions)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(eq(subscriptions.userId, userId));
   }
 
   async updateSubscription(userId: string, companies: string): Promise<Subscription> {
