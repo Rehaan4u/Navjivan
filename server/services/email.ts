@@ -59,235 +59,140 @@ export async function sendNewsletterEmail(
 
     // Create HTML email body
 const htmlBody = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
   <title>Navjivan</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        background-color: #EEF4FB;
-        font-family: 'DM Sans', Arial, sans-serif;
-        color: #1a1a1a;
-        padding: 0;
-        margin: 0;
-      }
-    .wrapper {
-      max-width: 900px;
-      width: 100%
-      margin: 0 auto;
-      background: #FFFFFF;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 4px 32px rgba(0,82,204,0.10);
-    }
-    .header {
-      background: linear-gradient(135deg, #0052CC 0%, #0747A6 100%);
-      padding: 40px 48px 32px;
-      text-align: center;
-      border-bottom: 4px solid #4C9AFF;
-    }
-    .header-eyebrow {
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 3px;
-      color: #4C9AFF;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-      font-family: 'DM Sans', sans-serif;
-    }
-    .header-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 32px;
-      font-weight: 700;
-      color: #FFFFFF;
-      letter-spacing: -0.5px;
-      margin-bottom: 4px;
-    }
-    .header-byline {
-      font-size: 11px;
-      color: rgba(255,255,255,0.5);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin-bottom: 20px;
-      font-family: 'DM Sans', sans-serif;
-    }
-    .header-meta {
-      display: inline-block;
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 4px;
-      padding: 6px 18px;
-      font-size: 12px;
-      color: rgba(255,255,255,0.8);
-      font-family: 'DM Sans', sans-serif;
-    }
-    .header-meta strong { color: #FFFFFF; font-weight: 600; }
-    .edition-bar {
-      background: #F0F6FF;
-      border-bottom: 1px solid #DEEBFF;
-      padding: 12px 48px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .edition-date { font-size: 12px; color: #5E6C84; font-family: 'DM Sans', sans-serif; }
-    .edition-companies { font-size: 11px; color: #0052CC; font-family: 'DM Sans', sans-serif; font-weight: 600; }
-    .body-wrap { padding: 8px 40px 40px; background: #FFFFFF; }
-    .article { padding: 36px 0 32px; border-bottom: 2px solid #DEEBFF; margin-bottom: 8px;}
-    .article:last-child { border-bottom: none; }
-    .article-number {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 3px;
-        color: #0052CC;
-        text-transform: uppercase;
-        margin-bottom: 16px;
-        font-family: 'DM Sans', sans-serif;
-        background: #EEF4FF;
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 4px;
-        border-left: 3px solid #0052CC;
-      }
-    .article-image {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      display: block;
-    }
-    .article-image {
-      width: 100%;
-      height: 260px;
-      object-fit: cover;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      margin-top: 4px;
-      display: block;
-      border: 1px solid #DEEBFF;
-    }
-      .article-headline {
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 22px;
-        font-weight: 700;
-        color: #0747A6;
-        line-height: 1.4;
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #EEF4FF;
-      }
-        .article-summary {
-        font-family: 'Source Serif 4', Georgia, serif;
-        font-size: 15.5px;
-        line-height: 1.85;
-        color: #1A1A2E;
-        font-weight: 300;
-        padding: 16px;
-        background: #F8FBFF;
-        border-radius: 6px;
-        border-left: 3px solid #4C9AFF;
-      }
-        .article-footer {
-        margin-top: 20px;
-        padding-top: 12px;
-        border-top: 1px solid #EBECF0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-    .source-label {
-      font-size: 11px;
-      font-weight: 500;
-      color: #5E6C84;
-      font-family: 'DM Sans', sans-serif;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-    .source-dot { width: 3px; height: 3px; border-radius: 50%; background: #B3BAC5; display: inline-block; }
-    .read-more {
-      font-size: 12px;
-      color: #0052CC;
-      text-decoration: none;
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 600;
-    }
-    .section-divider {
-      height: 1px;
-      background: linear-gradient(to right, transparent, #DEEBFF, transparent);
-      margin: 0 40px;
-    }
-    .footer {
-      background: linear-gradient(135deg, #0052CC 0%, #0747A6 100%);
-      padding: 28px 48px;
-      text-align: center;
-    }
-    .footer p { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'DM Sans', sans-serif; line-height: 1.8; }
-    .footer a { color: rgba(255,255,255,0.7); text-decoration: none; }
-  </style>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
 </head>
-<body>
-  <div class="wrapper">
+<body style="margin:0;padding:0;background-color:#EEF4FB;font-family:Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
-    <div class="header">
-      <div class="header-eyebrow">Daily Cloud Intelligence Briefing</div>
-      <div class="header-title">Navjivan</div>
-      <div class="header-byline">Est. 1919 · Reborn in AI</div>
-      <div class="header-meta">
-        <strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today
-      </div>
-    </div>
+  <!-- Outer wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EEF4FB;padding:24px 0;">
+    <tr>
+      <td align="center">
 
-    <div class="edition-bar">
-      <span class="edition-date">${formattedDate}</span>
-      <span class="edition-companies">Tracking: ${newsletter.companies}</span>
-    </div>
+        <!-- Main content table -->
+        <table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,82,204,0.10);">
 
-    <div class="body-wrap">
-      ${articles.map((article, index) => {
-        // ✅ Generate Unsplash image URL from headline keywords
-        const imageKeywords = article.headline
-          .toLowerCase()
-          .replace(/[^a-z0-9\s]/g, "")
-          .split(" ")
-          .filter((w: string) => w.length > 3)
-          .slice(0, 3)
-          .join(",");
-          // ✅ Pollinations AI — free AI image generation, no API key needed
-const imagePrompt = `${article.headline}, cloud computing, technology, professional, digital art, blue theme`;
-const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=300&nologo=true`;
+          <!-- HEADER -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0052CC 0%,#0747A6 100%);padding:40px 48px 32px;text-align:center;border-bottom:4px solid #4C9AFF;">
+              <p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:3px;color:#4C9AFF;text-transform:uppercase;font-family:Arial,sans-serif;">Daily Cloud Intelligence Briefing</p>
+              <h1 style="margin:0 0 6px;font-size:34px;font-weight:700;color:#ffffff;font-family:Georgia,serif;letter-spacing:-0.5px;">Navjivan</h1>
+              <p style="margin:0 0 20px;font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Est. 1919 · Reborn in AI</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                <tr>
+                  <td style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:8px 20px;">
+                    <span style="font-size:13px;color:#ffffff;font-family:Arial,sans-serif;"><strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-        return `
-        <div class="article">
-          <div class="article-number">Story ${index + 1} of ${articles.length}</div>
-          <img
-            src="${imageUrl}"
-            alt="${article.headline}"
-            class="article-image"
-            onerror="this.style.display='none'"
-          />
-          <div class="article-headline">${article.headline}</div>
-          <div class="article-summary">${article.summary}</div>
-          <div class="article-footer">
-            <span class="source-label">${article.sourceName}</span>
-            <span class="source-dot"></span>
-            <a href="${article.sourceUrl}" class="read-more" target="_blank">Read full story →</a>
-          </div>
-        </div>
-      `;
-      }).join('<div class="section-divider"></div>')}
-    </div>
+          <!-- EDITION BAR -->
+          <tr>
+            <td style="background:#F0F6FF;border-bottom:1px solid #DEEBFF;padding:12px 48px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-size:12px;color:#5E6C84;font-family:Arial,sans-serif;">${formattedDate}</td>
+                  <td align="right" style="font-size:11px;color:#0052CC;font-family:Arial,sans-serif;font-weight:700;">Tracking: ${newsletter.companies}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <div class="footer">
-      <p>© ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.</p>
-      <p style="margin-top:6px;">You're receiving this because you subscribed to daily cloud industry intelligence.</p>
-      <p style="margin-top:4px;"><a href="#">Unsubscribe</a> &nbsp;·&nbsp; <a href="#">Privacy Policy</a></p>
-    </div>
+          <!-- ARTICLES -->
+          <tr>
+            <td style="padding:0 48px 40px;background:#ffffff;">
 
-  </div>
+              ${articles.map((article, index) => {
+                const imagePrompt = `${article.headline}, cloud computing, technology, professional, cinematic lighting, 4k`;
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=350&nologo=true&seed=${index + 42}`;
+
+                return `
+              <!-- ARTICLE ${index + 1} -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:36px;border-bottom:2px solid #DEEBFF;padding-bottom:36px;">
+                <tr>
+                  <td>
+
+                    <!-- Story label -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+                      <tr>
+                        <td style="background:#EEF4FF;border-left:3px solid #0052CC;padding:4px 12px;border-radius:0 4px 4px 0;">
+                          <span style="font-size:10px;font-weight:700;letter-spacing:3px;color:#0052CC;text-transform:uppercase;font-family:Arial,sans-serif;">Story ${index + 1} of ${articles.length}</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Article image -->
+                    <img
+                      src="${imageUrl}"
+                      alt="${article.headline}"
+                      width="584"
+                      style="width:100%;max-width:584px;height:auto;display:block;border-radius:8px;margin-bottom:20px;border:1px solid #DEEBFF;"
+                    />
+
+                    <!-- Headline -->
+                    <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#0747A6;font-family:Georgia,serif;line-height:1.4;border-bottom:1px solid #EEF4FF;padding-bottom:12px;">${article.headline}</h2>
+
+                    <!-- Summary box -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+                      <tr>
+                        <td style="background:#F8FBFF;border-left:3px solid #4C9AFF;border-radius:0 6px 6px 0;padding:16px 20px;">
+                          <p style="margin:0;font-size:15px;line-height:1.85;color:#1A1A2E;font-family:Georgia,serif;font-weight:400;">${article.summary}</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Source + Read more -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #EBECF0;padding-top:14px;">
+                      <tr>
+                        <td style="font-size:11px;font-weight:700;color:#5E6C84;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif;">${article.sourceName}</td>
+                        <td align="right"><a href="${article.sourceUrl}" target="_blank" style="font-size:13px;color:#0052CC;text-decoration:none;font-weight:600;font-family:Arial,sans-serif;">Read full story →</a></td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+              `;
+              }).join("")}
+
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0052CC 0%,#0747A6 100%);padding:28px 48px;text-align:center;">
+              <p style="margin:0 0 6px;font-size:11px;color:rgba(255,255,255,0.5);font-family:Arial,sans-serif;">© ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.</p>
+              <p style="margin:0 0 8px;font-size:11px;color:rgba(255,255,255,0.4);font-family:Arial,sans-serif;">You're receiving this because you subscribed to daily cloud industry intelligence.</p>
+              <p style="margin:0;font-size:11px;font-family:Arial,sans-serif;">
+                <a href="#" style="color:rgba(255,255,255,0.6);text-decoration:none;">Unsubscribe</a>
+                &nbsp;·&nbsp;
+                <a href="#" style="color:rgba(255,255,255,0.6);text-decoration:none;">Privacy Policy</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- End main content table -->
+
+      </td>
+    </tr>
+  </table>
+
 </body>
 </html>`;
 
