@@ -1,5 +1,3 @@
-
-
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -9,16 +7,6 @@ import { triggerNewsletterGeneration, triggerNewsletterForUser } from "./service
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-
-  // Mock user for local dev — attached to every request
-  // app.use((req: any, res, next) => {
-  //   req.user = {
-  //     claims: { sub: "local-dev-user-1" },
-  //     email: "rehaan@test.com",
-  //     firstName: "Rehaan",
-  //   };
-  //   next();
-  // });
 
   // Auth route
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
@@ -32,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Subscription routes
+  // ── GET subscription ──
   app.get("/api/subscriptions", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -47,15 +35,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── CREATE subscription ──
   app.post("/api/subscriptions", isAuthenticated, async (req: any, res) => {
     try {
-      console.log("USER:", req.user);   // 👈 ADD THIS
-      console.log("BODY:", req.body);   // 👈 ADD THIS
       const userId = req.user.claims.sub;
       const validatedData = insertSubscriptionSchema.parse(req.body);
 
       const existing = await storage.getSubscription(userId);
+
+      // If subscription exists but is inactive, reactivate it instead of erroring
       if (existing) {
+        if (!existing.isActive) {
+          const companies = validatedData.companies
+            .split(/[,;]/)
+            .map((c: string) => c.trim())
+            .filter((c: string) => c.length > 0);
+
+          if (companies.length === 0) {
+            return res.status(400).json({ message: "At least one company is required" });
+          }
+          if (companies.length > 3) {
+            return res.status(400).json({ message: "Maximum 3 companies allowed" });
+          }
+
+          // Reactivate by updating
+          const subscription = await storage.updateSubscription(userId, companies.join(", "));
+          // Also reactivate the isActive flag
+          await storage.reactivateSubscription(userId);
+          return res.status(200).json(subscription);
+        }
         return res.status(400).json({ message: "Subscription already exists. Use PUT to update." });
       }
 
@@ -87,8 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  
-
+  // ── UPDATE subscription ──
   app.put("/api/subscriptions", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -121,7 +128,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Newsletter routes
+  // ── DELETE (unsubscribe) ──
+  app.delete("/api/subscriptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const subscription = await storage.getSubscription(userId);
+
+      if (!subscription) {
+        return res.status(404).json({ message: "No subscription found" });
+      }
+
+      await storage.deactivateSubscription(userId);
+      console.log(`✅ User ${userId} unsubscribed`);
+      res.json({ message: "Unsubscribed successfully" });
+    } catch (error) {
+      console.error("Error unsubscribing:", error);
+      res.status(500).json({ message: "Failed to unsubscribe" });
+    }
+  });
+
+  // ── Newsletter routes ──
   app.get("/api/newsletters", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -149,18 +175,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual newsletter trigger
-app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res) => {
-  const userId = req.user.claims.sub;
-  console.log(`Manual newsletter generation triggered by user: ${userId}`);
-  res.json({ message: "Newsletter generation started", status: "processing" });
-  // ✅ Only generate for the logged-in user — already imported at top
-  triggerNewsletterForUser(userId, "manual").catch((error: Error) => {
-    console.error("Background newsletter generation failed:", error);
-  });
-});
+  // ── Manual newsletter trigger ──
+  app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
 
-  // Cron trigger
+      // ✅ Block if not subscribed or unsubscribed
+      const subscription = await storage.getSubscription(userId);
+      if (!subscription || !subscription.isActive) {
+        return res.status(403).json({
+          message: "No active subscription",
+          code: "NOT_SUBSCRIBED",
+        });
+      }
+
+      console.log(`Manual newsletter generation triggered by user: ${userId}`);
+      res.json({ message: "Newsletter generation started", status: "processing" });
+
+      // Fire for this user only — non-blocking
+      triggerNewsletterForUser(userId, "manual").catch((error: Error) => {
+        console.error("Background newsletter generation failed:", error);
+      });
+    } catch (error) {
+      console.error("Error triggering newsletter:", error);
+      res.status(500).json({ message: "Failed to trigger newsletter" });
+    }
+  });
+
+  // ── Cron trigger ──
   app.post("/api/cron/trigger-newsletters", async (req, res) => {
     try {
       const cronSecret = process.env.CRON_SECRET;
@@ -185,7 +227,7 @@ app.post("/api/admin/trigger-newsletters", isAuthenticated, async (req: any, res
     }
   });
 
-  // Health check
+  // ── Health check ──
   app.get("/api/health/scheduler", async (_req, res) => {
     try {
       const { getSchedulerStatus } = await import("./services/scheduler");
