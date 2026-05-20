@@ -375,10 +375,10 @@ async function filterAlreadySentArticles(
 if (lastNewsletter) {
   // Only filter articles from newsletters sent in the last 12 hours
   // This prevents blocking articles when generating multiple times per day
-  const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
   const newsletterTime = new Date(lastNewsletter.generatedAt!);
   
-  if (newsletterTime > twelveHoursAgo) {
+  if (newsletterTime > sixHoursAgo) {
     const prevArticles = await storage.getNewsletterArticles(lastNewsletter.id);
     prevArticles.forEach((a: Article) => sentUrls.add(a.sourceUrl));
     console.log(`[SENT-FILTER] Found ${prevArticles.length} articles in last newsletter (within 12h)`);

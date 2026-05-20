@@ -7,8 +7,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Subscription, Newsletter, Article } from "@shared/schema";
 import {
   X, Zap, Settings, FileText, ChevronDown, ChevronUp,
-  Download, CheckCircle2, Building2, Newspaper,
-  Send
+  CheckCircle2, Building2, Newspaper, Send
 } from "lucide-react";
 
 const VALID_COMPANIES = [
@@ -31,6 +30,7 @@ const VALID_COMPANIES = [
     color: "#0078D4",
   },
 ];
+
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -40,28 +40,13 @@ export default function Dashboard() {
   const particleCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
-  // const [companySearch, setCompanySearch] = useState("");
-  // const [dropdownOpen, setDropdownOpen] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
-  //added ghost auto-complete feature
-  // const [ghostSuggestion, setGhostSuggestion] = useState<string>("");
-  // const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       console.log("Auth skipped (dev mode)");
     }
   }, [authLoading, user]);
-
-  // useEffect(() => {
-  //   function handleClickOutside(e: MouseEvent) {
-  //     if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-  //       setDropdownOpen(false);
-  //     }
-  //   }
-  //   document.addEventListener("mousedown", handleClickOutside);
-  //   return () => document.removeEventListener("mousedown", handleClickOutside);
-  // }, []);
 
   useEffect(() => {
     const gCanvas = globeCanvasRef.current;
@@ -97,9 +82,9 @@ export default function Dashboard() {
     let particles = buildParticles();
 
     const rings = [
-      { tilt: 0,                    pulse: 0,              speed: 0.008 },
-      { tilt: 35 * Math.PI / 180,   pulse: Math.PI * 0.7,  speed: 0.006 },
-      { tilt: 70 * Math.PI / 180,   pulse: Math.PI * 1.4,  speed: 0.010 },
+      { tilt: 0,                  pulse: 0,             speed: 0.008 },
+      { tilt: 35 * Math.PI / 180, pulse: Math.PI * 0.7, speed: 0.006 },
+      { tilt: 70 * Math.PI / 180, pulse: Math.PI * 1.4, speed: 0.010 },
     ];
 
     type Spark = { x: number; y: number; t0: number };
@@ -273,29 +258,18 @@ export default function Dashboard() {
     },
   });
 
-useEffect(() => {
-  if (subscription) {
-    const saved = subscription.companies
-      .split(',')
-      .map(c => c.trim())
-      .filter(Boolean);
-    // Only restore companies that exist in VALID_COMPANIES
-    const valid = saved.filter(name =>
-      VALID_COMPANIES.some(c => c.name === name)
-    );
-    setSelectedCompanies(valid);
-  }
-}, [subscription]);
-
-  // const filteredCompanies = VALID_COMPANIES.filter(
-  //   c => c.name.toLowerCase().includes(companySearch.toLowerCase()) && !selectedCompanies.includes(c.name)
-  // );
-  // const searchMatchesNothing = companySearch.length > 0 && filteredCompanies.length === 0;
-
-  const removeCompany = (name: string) => {
-    setSelectedCompanies(prev => prev.filter(c => c !== name));
-    setCompanyError(null);
-  };
+  useEffect(() => {
+    if (subscription) {
+      const saved = subscription.companies
+        .split(',')
+        .map(c => c.trim())
+        .filter(Boolean);
+      const valid = saved.filter(name =>
+        VALID_COMPANIES.some(c => c.name === name)
+      );
+      setSelectedCompanies(valid);
+    }
+  }, [subscription]);
 
   const subscribeMutation = useMutation({
     mutationFn: async (data: { companies: string }) => {
@@ -306,30 +280,64 @@ useEffect(() => {
     onSuccess: (data: Subscription) => {
       queryClient.setQueryData(["subscriptions"], data);
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-      toast({ title: "Preferences saved", description: subscription ? "Your companies have been updated." : "You'll receive your first newsletter at 9:00 AM IST tomorrow." });
+      toast({
+        title: "Preferences saved",
+        description: subscription
+          ? "Your companies have been updated."
+          : "You'll receive your first newsletter at 9:00 AM IST tomorrow.",
+      });
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) { setTimeout(() => { window.location.href = "/api/login"; }, 500); return; }
+      if (isUnauthorizedError(error)) {
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
       toast({ title: "Error", description: error.message || "Failed to save preferences", variant: "destructive" });
     },
   });
 
-const triggerMutation = useMutation({
-  mutationFn: async () => {
-    // ✅ Always refetch latest subscription before triggering
-    await queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-    await queryClient.refetchQueries({ queryKey: ["subscriptions"] });
+  const unsubscribeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/subscriptions", {});
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["subscriptions"], null);
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      toast({
+        title: "You've unsubscribed 👋",
+        description: "Gandhi says: 'The best time to subscribe was yesterday. The next best time is now.' See you soon.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't unsubscribe",
+        description: "Something went wrong. Try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
-    const res = await fetch("/api/admin/trigger-newsletters", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}), credentials: "include",
-    });
-    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-    return res;
-  },
+  const triggerMutation = useMutation({
+    mutationFn: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      await queryClient.refetchQueries({ queryKey: ["subscriptions"] });
+
+      const res = await fetch("/api/admin/trigger-newsletters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["newsletters"] });
-      toast({ title: "Generating newsletter", description: `Your newsletter is being prepared. Check ${user?.email} in a few minutes.` });
+      toast({
+        title: "Generating newsletter",
+        description: "Your newsletter is being prepared. Check your inbox in a few minutes.",
+      });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to generate", description: error.message, variant: "destructive" });
@@ -337,12 +345,13 @@ const triggerMutation = useMutation({
   });
 
   const handleSavePreferences = (e: React.FormEvent) => {
-  e.preventDefault();
-  if (selectedCompanies.length === 0) {
-    toast({ title: "Select at least one platform", variant: "destructive" }); return;
-  }
-  subscribeMutation.mutate({ companies: selectedCompanies.join(", ") });
-};
+    e.preventDefault();
+    if (selectedCompanies.length === 0) {
+      toast({ title: "Select at least one platform", variant: "destructive" });
+      return;
+    }
+    subscribeMutation.mutate({ companies: selectedCompanies.join(", ") });
+  };
 
   if (authLoading) {
     return (
@@ -406,7 +415,12 @@ const triggerMutation = useMutation({
                   {user?.firstName || user?.email?.split('@')[0]}
                 </span>
                 <span style={{ color: "rgba(255,255,255,0.2)" }}>|</span>
-                <button className="pc-logout-btn" onClick={() => window.location.href = '/api/logout'} data-testid="button-logout" style={{ color: "#93c5fd", fontWeight: 500 }}>
+                <button
+                  className="pc-logout-btn"
+                  onClick={() => window.location.href = '/api/logout'}
+                  data-testid="button-logout"
+                  style={{ color: "#93c5fd", fontWeight: 500 }}
+                >
                   <span>Log out</span>
                 </button>
               </div>
@@ -435,7 +449,7 @@ const triggerMutation = useMutation({
             <div className="pc-header-pills">
               <div className="pc-header-pill">
                 <span className="pc-header-pill-dot" />
-                {subscription ? "Subscription Active" : "Not subscribed"}
+                {subscription?.isActive ? "Subscription Active" : "Not subscribed"}
               </div>
               <div className="pc-header-pill">
                 <span className="pc-header-pill-dot-blue" />
@@ -459,6 +473,7 @@ const triggerMutation = useMutation({
             <div className="animate-float" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24, animationDelay: "0ms" }}>
               <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 24 }} className="grid-responsive">
 
+                {/* ── Cloud Platform Tracker ── */}
                 <div className="pc-card pc-card-inner" ref={preferencesRef} style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 22 }}>
                     <div className="pc-section-icon"><Building2 size={18} /></div>
@@ -469,137 +484,116 @@ const triggerMutation = useMutation({
                   </div>
                   <form onSubmit={handleSavePreferences} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-                      {/* ── Clickable cloud platform tiles ── */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {VALID_COMPANIES.map(co => {
-                          const isSelected = selectedCompanies.includes(co.name);
-                          return (
-                            <button
-                              key={co.name}
-                              type="button"
-                              onClick={() => {
-                                setCompanyError(null);
-                                if (isSelected) {
-                                  setSelectedCompanies(prev => prev.filter(c => c !== co.name));
-                                } else if (selectedCompanies.length < 3) {
-                                  setSelectedCompanies(prev => [...prev, co.name]);
-                                } else {
-                                  setCompanyError("Maximum 3 platforms selected");
-                                }
-                              }}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 16,
-                                padding: "14px 18px",
-                                borderRadius: 10,
-                                border: isSelected
-                                  ? `2px solid ${co.color}`
-                                  : "2px solid rgba(255,255,255,0.08)",
-                                background: isSelected
-                                  ? `${co.color}15`
-                                  : "rgba(255,255,255,0.02)",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                                textAlign: "left",
-                                width: "100%",
-                              }}
-                              data-testid={`tile-company-${co.name}`}
-                            >
-                              {/* Logo */}
-                              <div style={{
-                                width: 44, height: 44,
-                                borderRadius: 10,
-                                background: "rgba(255,255,255,0.06)",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                flexShrink: 0,
-                                border: `1px solid ${isSelected ? co.color + "40" : "transparent"}`,
-                              }}>
-                                <img
-                                  src={co.logo}
-                                  alt={co.name}
-                                  style={{ width: 28, height: 28, objectFit: "contain" }}
-                                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                                />
-                              </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {VALID_COMPANIES.map(co => {
+                        const isSelected = selectedCompanies.includes(co.name);
+                        return (
+                          <button
+                            key={co.name}
+                            type="button"
+                            onClick={() => {
+                              setCompanyError(null);
+                              if (isSelected) {
+                                setSelectedCompanies(prev => prev.filter(c => c !== co.name));
+                              } else if (selectedCompanies.length < 3) {
+                                setSelectedCompanies(prev => [...prev, co.name]);
+                              } else {
+                                setCompanyError("Maximum 3 platforms selected");
+                              }
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 16,
+                              padding: "14px 18px",
+                              borderRadius: 10,
+                              border: isSelected ? `2px solid ${co.color}` : "2px solid rgba(255,255,255,0.08)",
+                              background: isSelected ? `${co.color}15` : "rgba(255,255,255,0.02)",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease",
+                              textAlign: "left",
+                              width: "100%",
+                            }}
+                            data-testid={`tile-company-${co.name}`}
+                          >
+                            <div style={{
+                              width: 44, height: 44,
+                              borderRadius: 10,
+                              background: "rgba(255,255,255,0.06)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              flexShrink: 0,
+                              border: `1px solid ${isSelected ? co.color + "40" : "transparent"}`,
+                            }}>
+                              <img
+                                src={co.logo}
+                                alt={co.name}
+                                style={{ width: 28, height: 28, objectFit: "contain" }}
+                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                              />
+                            </div>
 
-                              {/* Text */}
-                              <div style={{ flex: 1 }}>
-                                <div style={{
-                                  fontSize: 15, fontWeight: 600,
-                                  color: isSelected ? co.color : "var(--pc-text)",
-                                  marginBottom: 2,
-                                }}>
-                                  {co.name}
-                                </div>
-                                <div style={{
-                                  fontSize: 12,
-                                  color: "var(--pc-text-muted)",
-                                }}>
-                                  {co.description}
-                                </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 15, fontWeight: 600, color: isSelected ? co.color : "var(--pc-text)", marginBottom: 2 }}>
+                                {co.name}
                               </div>
+                              <div style={{ fontSize: 12, color: "var(--pc-text-muted)" }}>
+                                {co.description}
+                              </div>
+                            </div>
 
-                              {/* Checkmark */}
-                              <div style={{
-                                width: 22, height: 22,
-                                borderRadius: "50%",
-                                border: isSelected ? `2px solid ${co.color}` : "2px solid rgba(255,255,255,0.15)",
-                                background: isSelected ? co.color : "transparent",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                flexShrink: 0,
-                                transition: "all 0.2s ease",
-                              }}>
-                                {isSelected && (
-                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
+                            <div style={{
+                              width: 22, height: 22,
+                              borderRadius: "50%",
+                              border: isSelected ? `2px solid ${co.color}` : "2px solid rgba(255,255,255,0.15)",
+                              background: isSelected ? co.color : "transparent",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              flexShrink: 0,
+                              transition: "all 0.2s ease",
+                            }}>
+                              {isSelected && (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {companyError && (
+                      <div className="pc-error-text" data-testid="text-company-error">
+                        {companyError}
                       </div>
+                    )}
 
-                      {/* Error message */}
-                      {companyError && (
-                        <div className="pc-error-text" data-testid="text-company-error">
-                          {companyError}
-                        </div>
-                      )}
+                    {selectedCompanies.length > 0 && (
+                      <div style={{ fontSize: 12, color: "var(--pc-text-muted)", textAlign: "center" }}>
+                        {selectedCompanies.length} of 3 platforms selected
+                      </div>
+                    )}
 
-                      {/* Selected count */}
-                      {selectedCompanies.length > 0 && (
-                        <div style={{
-                          fontSize: 12,
-                          color: "var(--pc-text-muted)",
-                          textAlign: "center",
-                        }}>
-                          {selectedCompanies.length} of 3 platforms selected
-                        </div>
-                      )}
-
-                      {/* Save button */}
-                      <button
-                        type="submit"
-                        className="pc-btn-gold"
-                        disabled={subscribeMutation.isPending || selectedCompanies.length === 0}
-                        data-testid="button-save-subscription"
-                      >
-                        {subscribeMutation.isPending
-                          ? <>
-                              <div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.30)", borderTopColor: "#ffffff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                              {subscription ? "Updating…" : "Subscribing…"}
-                            </>
-                          : <>
-                              <Settings size={14} />
-                              {subscription ? "Update Preferences" : "Start My Newsletter"}
-                            </>
-                        }
-                      </button>
-                   </form>
+                    <button
+                      type="submit"
+                      className="pc-btn-gold"
+                      disabled={subscribeMutation.isPending || selectedCompanies.length === 0}
+                      data-testid="button-save-subscription"
+                    >
+                      {subscribeMutation.isPending
+                        ? <>
+                            <div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.30)", borderTopColor: "#ffffff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                            {subscription ? "Updating…" : "Subscribing…"}
+                          </>
+                        : <>
+                            <Settings size={14} />
+                            {subscription ? "Update Preferences" : "Start My Newsletter"}
+                          </>
+                      }
+                    </button>
+                  </form>
                 </div>
 
+                {/* ── Quick Actions ── */}
                 <div className="pc-card pc-card-inner" style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 22 }}>
                     <div className="pc-section-icon"><Zap size={18} /></div>
@@ -610,10 +604,22 @@ const triggerMutation = useMutation({
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+                    {/* Generate Newsletter */}
                     <button
                       className="pc-action-item"
-                      onClick={() => triggerMutation.mutate()}
-                      disabled={triggerMutation.isPending || !subscription}
+                      onClick={() => {
+                        if (!subscription?.isActive) {
+                          toast({
+                            title: "You're not subscribed! 😅",
+                            description: "Looks like you ghosted us. Hit Subscribe to get back in the loop.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        triggerMutation.mutate();
+                      }}
+                      disabled={triggerMutation.isPending}
                       data-testid="button-trigger-newsletter"
                     >
                       <div className="pc-action-icon-primary">
@@ -624,27 +630,55 @@ const triggerMutation = useMutation({
                       </div>
                       <div>
                         <div className="pc-action-title">{triggerMutation.isPending ? "Generating…" : "Generate Newsletter"}</div>
-                        <div className="pc-action-desc">Send to {user?.email?.split('@')[0]}…</div>
+                        <div className="pc-action-desc">AI-curated cloud briefing</div>
                       </div>
                     </button>
 
-                    <button className="pc-action-item" onClick={() => { setActiveView("home"); setTimeout(() => preferencesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }} data-testid="button-update-preferences">
-                      <div className="pc-action-icon"><Settings size={16} /></div>
-                      <div>
-                        <div className="pc-action-title">Update Preferences</div>
-                        <div className="pc-action-desc">Change tracked companies</div>
+                    {/* View Archive */}
+                    <button
+                      className="pc-action-item"
+                      onClick={() => setActiveView("archive")}
+                      data-testid="button-view-archive"
+                    >
+                      <div className="pc-action-icon-primary">
+                        <FileText size={16} />
                       </div>
-                    </button>
-
-                    <button className="pc-action-item" onClick={() => setActiveView("archive")} data-testid="button-view-archive">
-                      <div className="pc-action-icon"><FileText size={16} /></div>
                       <div>
                         <div className="pc-action-title">View Archive</div>
                         <div className="pc-action-desc">{newsletters.length} newsletter{newsletters.length !== 1 ? "s" : ""}</div>
                       </div>
                     </button>
+
+                    {/* Unsubscribe */}
+                    <button
+                      className="pc-action-item"
+                      onClick={() => {
+                        if (!subscription?.isActive) {
+                          toast({
+                            title: "Nothing to unsubscribe from 🤔",
+                            description: "You're not even subscribed yet. Bold move though.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        if (window.confirm("Are you sure you want to unsubscribe? We'll miss you (and so will Gandhi 🙏)")) {
+                          unsubscribeMutation.mutate();
+                        }
+                      }}
+                      data-testid="button-unsubscribe"
+                    >
+                      <div className="pc-action-icon-primary" style={{ background: "#dc2626" }}>
+                        <X size={16} />
+                      </div>
+                      <div>
+                        <div className="pc-action-title">Unsubscribe</div>
+                        <div className="pc-action-desc">Cancel daily briefings</div>
+                      </div>
+                    </button>
+
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -728,33 +762,37 @@ function ArchiveCard({ newsletter }: { newsletter: Newsletter }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 15, fontWeight: 600, color: "var(--pc-text)" }}>{formattedDate}</span>
-              {newsletter.emailSent && <span className="pc-delivered-badge"><CheckCircle2 size={11} /> Delivered</span>}
+              {newsletter.emailSent && (
+                <span className="pc-delivered-badge"><CheckCircle2 size={11} /> Delivered</span>
+              )}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {newsletter.companies.split(',').map((co, i) => {
                 const match = VALID_COMPANIES.find(c => c.name.toLowerCase() === co.trim().toLowerCase());
                 return (
                   <span key={i} className="pc-company-tag">
-                    {match && <img src={match.logo} alt={match.name} style={{ width: 14, height: 14, borderRadius: 3, objectFit: "contain" }}
-                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+                    {match && (
+                      <img
+                        src={match.logo}
+                        alt={match.name}
+                        style={{ width: 14, height: 14, borderRadius: 3, objectFit: "contain" }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
                     {co.trim()}
                   </span>
                 );
               })}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {newsletter.pdfPath && (
-              <button className="pc-icon-btn" style={{ fontSize: 13, padding: "8px 14px" }}
-                onClick={() => newsletter.pdfPath && window.open(newsletter.pdfPath, '_blank')} data-testid={`button-download-${newsletter.id}`}>
-                <Download size={13} /> PDF
-              </button>
-            )}
-            <button className="pc-icon-btn" style={{ fontSize: 13, padding: "8px 14px" }}
-              onClick={() => setExpanded(!expanded)} data-testid={`button-toggle-${newsletter.id}`}>
-              {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            </button>
-          </div>
+          <button
+            className="pc-icon-btn"
+            style={{ fontSize: 13, padding: "8px 14px" }}
+            onClick={() => setExpanded(!expanded)}
+            data-testid={`button-toggle-${newsletter.id}`}
+          >
+            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
         </div>
 
         {expanded && (
@@ -766,11 +804,16 @@ function ArchiveCard({ newsletter }: { newsletter: Newsletter }) {
                   <div style={{ fontSize: 15, fontWeight: 600, color: "var(--pc-text)", fontFamily: "'Lora', serif", marginBottom: 6 }}>{a.headline}</div>
                   <div style={{ fontSize: 13, color: "var(--pc-text-muted)", lineHeight: 1.65, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 8 }}>{a.summary}</div>
                   <div style={{ display: "flex", gap: 8, fontSize: 12, color: "var(--pc-text-muted)", alignItems: "center" }}>
-                    <span style={{ fontWeight: 500, color: "var(--pc-text-muted)" }}>{a.sourceName}</span>
+                    <span style={{ fontWeight: 500 }}>{a.sourceName}</span>
                     <span>·</span>
-                    <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--pc-gold)", textDecoration: "none" }}
+                    <a
+                      href={a.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "var(--pc-gold)", textDecoration: "none" }}
                       onMouseEnter={e => (e.currentTarget.style.filter = "brightness(1.2)")}
-                      onMouseLeave={e => (e.currentTarget.style.filter = "")}>
+                      onMouseLeave={e => (e.currentTarget.style.filter = "")}
+                    >
                       Read more →
                     </a>
                   </div>
@@ -782,15 +825,4 @@ function ArchiveCard({ newsletter }: { newsletter: Newsletter }) {
       </div>
     </div>
   );
-}
-
-function formatTimeAgo(date: Date): string {
-  const diffMs = Date.now() - date.getTime();
-  const h = Math.floor(diffMs / 3600000);
-  const d = Math.floor(diffMs / 86400000);
-  if (h < 1) return "just now";
-  if (h < 24) return `${h}h ago`;
-  if (d === 1) return "yesterday";
-  if (d < 7) return `${d}d ago`;
-  return `${Math.floor(d / 7)}w ago`;
 }

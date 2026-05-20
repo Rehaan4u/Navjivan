@@ -78,28 +78,21 @@ const htmlBody = `<!DOCTYPE html>
 <body style="margin:0;padding:0;background-color:#EEF4FB;font-family:Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
   <!-- Outer wrapper -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EEF4FB;padding:24px 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;padding:0;">
     <tr>
       <td align="center">
 
         <!-- Main content table -->
-        <table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,82,204,0.10);">
-
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:700px;width:100%;background:#ffffff;">
           <!-- HEADER -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#0052CC 0%,#0747A6 100%);padding:40px 48px 32px;text-align:center;border-bottom:4px solid #4C9AFF;">
-              <p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:3px;color:#4C9AFF;text-transform:uppercase;font-family:Arial,sans-serif;">Daily Cloud Intelligence Briefing</p>
-              <h1 style="margin:0 0 6px;font-size:34px;font-weight:700;color:#ffffff;font-family:Georgia,serif;letter-spacing:-0.5px;">Navjivan</h1>
-              <p style="margin:0 0 20px;font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Est. 1919 · Reborn in AI</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-                <tr>
-                  <td style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:8px 20px;">
-                    <span style="font-size:13px;color:#ffffff;font-family:Arial,sans-serif;"><strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+<tr>
+  <td style="padding:40px 48px 24px;text-align:center;border-bottom:2px solid #0052CC;">
+    <p style="margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:3px;color:#0052CC;text-transform:uppercase;font-family:Arial,sans-serif;">Daily Cloud Intelligence Briefing</p>
+    <h1 style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0A0F2E;font-family:Georgia,serif;letter-spacing:-1px;">Navjivan</h1>
+    <p style="margin:0 0 16px;font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Est. 1919 · Reborn in AI</p>
+    <p style="margin:0;font-size:13px;color:#444;font-family:Arial,sans-serif;"><strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today</p>
+  </td>
+</tr>
 
           <!-- EDITION BAR -->
           <tr>
@@ -118,9 +111,10 @@ const htmlBody = `<!DOCTYPE html>
             <td style="padding:0 48px 40px;background:#ffffff;">
 
               ${articles.map((article, index) => {
-                const imagePrompt = `${article.headline}, cloud computing, technology, professional, cinematic lighting, 4k`;
-                const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=350&nologo=true&seed=${index + 42}`;
-
+                // Use headline directly — strip emoji prefix if present, then build a specific visual prompt
+                    const cleanHeadline = article.headline.replace(/[^\w\s]/g, "").trim();
+                    const imagePrompt = `Photorealistic news photograph for: "${cleanHeadline}". Editorial style, sharp focus, professional lighting, no text, no logos`;
+                    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=350&nologo=true&seed=${index + 1}&model=flux`;
                 return `
               <!-- ARTICLE ${index + 1} -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:36px;border-bottom:2px solid #DEEBFF;padding-bottom:36px;">
@@ -175,13 +169,13 @@ const htmlBody = `<!DOCTYPE html>
 
           <!-- FOOTER -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0052CC 0%,#0747A6 100%);padding:28px 48px;text-align:center;">
-              <p style="margin:0 0 6px;font-size:11px;color:rgba(255,255,255,0.5);font-family:Arial,sans-serif;">© ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.</p>
+            <td style="background:#F8F9FA;border-top:1px solid #DEEBFF;padding:28px 48px;text-align:center;">
+             <p style="margin:0 0 6px;font-size:11px;color:#888;font-family:Arial,sans-serif;">© ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.</p>
               <p style="margin:0 0 8px;font-size:11px;color:rgba(255,255,255,0.4);font-family:Arial,sans-serif;">You're receiving this because you subscribed to daily cloud industry intelligence.</p>
               <p style="margin:0;font-size:11px;font-family:Arial,sans-serif;">
-                <a href="#" style="color:rgba(255,255,255,0.6);text-decoration:none;">Unsubscribe</a>
-                &nbsp;·&nbsp;
-                <a href="#" style="color:rgba(255,255,255,0.6);text-decoration:none;">Privacy Policy</a>
+              <a href="#" style="color:#0052CC;text-decoration:none;">Unsubscribe</a>
+              &nbsp;·&nbsp;
+              <a href="#" style="color:#0052CC;text-decoration:none;">Privacy Policy</a>
               </p>
             </td>
           </tr>
