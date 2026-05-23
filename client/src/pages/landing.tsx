@@ -713,9 +713,9 @@ export default function Landing() {
             color: "rgba(255,255,255,0.38)",
             fontFamily: "sans-serif",
           }}>
-            Navjivan — "New Life" in Gujarati — was Gandhi's newspaper that shaped a
-            nation's thinking. We carry that spirit forward, bringing clarity and
-            wisdom to the age of cloud computing.
+            Gandhi freed India from colonial rule. We free you from cloud chaos —
+            one morning briefing at a time. AWS, Google Cloud, Azure: distilled
+            into three minutes of clarity, delivered before your first coffee.
           </p>
           <div style={{
             width: 1, height: 60,
