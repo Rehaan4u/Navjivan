@@ -430,7 +430,7 @@ export default function Dashboard() {
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div>
                   <div className="pc-brand-name">Navjivan</div>
-                  <div className="pc-brand-sub">EST. 1919 · REBORN IN AI</div>
+                  <div className="pc-brand-sub">Your daily dispatch from the cloud frontier.</div>
                 </div>
               </div>
             </div>

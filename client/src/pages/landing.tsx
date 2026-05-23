@@ -272,7 +272,7 @@ export default function Landing() {
               fontFamily: "sans-serif",
               marginTop: -2,
             }}>
-              Est. 1919 · Reborn in AI
+              Your daily dispatch from the cloud frontier.
             </div>
           </div>
         </div>

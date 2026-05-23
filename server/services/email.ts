@@ -216,7 +216,7 @@ export async function sendNewsletterEmail(
           <!-- FOOTER -->
           <tr>
             <td style="background:#F8F9FA;border-top:1px solid #DEEBFF;padding:28px 48px;text-align:center;">
-              <p style="margin:0 0 6px;font-size:11px;color:#888;font-family:Arial,sans-serif;">© ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.</p>
+              <p style="margin:0 0 6px;font-size:11px;color:#888;font-family:Arial,sans-serif;">© ${new Date().getFullYear()} Navjivan · CloudSutra — Your daily dispatch from the cloud frontier. Read the cloud.</p>
               <p style="margin:0 0 8px;font-size:11px;color:#aaa;font-family:Arial,sans-serif;">You're receiving this because you subscribed to daily cloud industry intelligence.</p>
               <p style="margin:0;font-size:11px;font-family:Arial,sans-serif;">
                 <a href="#" style="color:#0052CC;text-decoration:none;">Unsubscribe</a>
@@ -255,7 +255,7 @@ Read more: ${article.sourceUrl}
     const attachments: any[] = [];
 
     const mailOptions = {
-      from: process.env.SMTP_FROM || '"Navjivan" <noreply@navjivan.com>',
+      from: process.env.SMTP_FROM || '"CloudSutra by Navjivan" <noreply@navjivan.com>',
       to: recipientEmail,
       subject: `Navjivan — Your Cloud Briefing · ${formattedDate}`,
       text: textBody,
