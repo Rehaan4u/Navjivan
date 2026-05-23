@@ -314,13 +314,13 @@ export default function Landing() {
           {/* Gandhi image on the right */}
             <div style={{
               position: "absolute",
-              right: "-120px",
-              top: "45%",
+              right: "-60px",
+              top: "38%",
               transform: "translateY(-55%)",
               zIndex: 0,
               pointerEvents: "none",
-              width: "65%",
-              maxWidth: 820,
+              width: "58%",
+              maxWidth: 740,
             }}>
               <img
                 src="/gandhi.png"
