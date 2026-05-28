@@ -36,3 +36,5 @@ server/public/
 vite.config.ts.*
 *.tar.gz
 *.zip
+dist/
+
