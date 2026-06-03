@@ -1,49 +1,37 @@
-import * as nodemailer from "nodemailer";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { storage } from "../storage";
-
+ 
+// ── SES Client Setup ──
+const sesClient = new SESClient({
+  region: process.env.AWS_REGION || "ap-south-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+ 
 const USE_REAL_EMAIL = !!(
-  process.env.SMTP_HOST &&
-  process.env.SMTP_USER &&
-  process.env.SMTP_PASS
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY &&
+  process.env.SES_FROM_ADDRESS
 );
-
+ 
 if (USE_REAL_EMAIL) {
-  console.log(`Email service: Using SMTP at ${process.env.SMTP_HOST}`);
+  console.log(`Email service: Using AWS SES in region ${process.env.AWS_REGION}`);
 } else {
   console.log("Email service: Using mock mode (emails will be logged, not sent)");
 }
-
-let transporter: nodemailer.Transporter | null = null;
-
-function getTransporter() {
-  if (!transporter) {
-    if (USE_REAL_EMAIL) {
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST!,
-        port: parseInt(process.env.SMTP_PORT || "587"),
-        secure: process.env.SMTP_PORT === "465",
-        auth: {
-          user: process.env.SMTP_USER!,
-          pass: process.env.SMTP_PASS!,
-        },
-      });
-    } else {
-      transporter = nodemailer.createTransport({ jsonTransport: true });
-    }
-  }
-  return transporter;
-}
-
+ 
 // ── Fetch a relevant image URL for a given article headline ──
 async function fetchArticleImage(headline: string, index: number): Promise<string> {
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY || "";
-
+ 
   // Strip leading emoji from AI-generated headlines
   const cleanHeadline = headline
-  .replace(/^[\uD83C-\uDBFF][\uDC00-\uDFFF]/, "")
-  .replace(/^[\u2600-\u27FF]\s*/, "")
-  .trim();
-
+    .replace(/^[\uD83C-\uDBFF][\uDC00-\uDFFF]/, "")
+    .replace(/^[\u2600-\u27FF]\s*/, "")
+    .trim();
+ 
   // Build a focused 2-3 word search query from the headline
   const searchQuery = cleanHeadline
     .toLowerCase()
@@ -52,7 +40,7 @@ async function fetchArticleImage(headline: string, index: number): Promise<strin
     .filter((w: string) => w.length > 3)
     .slice(0, 3)
     .join(" ");
-
+ 
   // ── Try Unsplash first ──
   if (unsplashKey) {
     try {
@@ -60,7 +48,7 @@ async function fetchArticleImage(headline: string, index: number): Promise<strin
       const response = await fetch(url, {
         headers: { "Accept-Version": "v1" },
       });
-
+ 
       if (response.ok) {
         const data = await response.json();
         const imageUrl = data?.urls?.regular || data?.urls?.full || "";
@@ -75,14 +63,14 @@ async function fetchArticleImage(headline: string, index: number): Promise<strin
       console.warn(`[IMAGE] Unsplash fetch failed:`, err);
     }
   }
-
+ 
   // ── Fallback: Pollinations AI ──
   const imagePrompt = `Photorealistic editorial news photograph: ${cleanHeadline}. Professional lighting, sharp focus, no text, no logos, high resolution`;
   const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=350&nologo=true&seed=${index + 7}&model=flux`;
   console.log(`[IMAGE] Pollinations fallback for: "${cleanHeadline}"`);
   return pollinationsUrl;
 }
-
+ 
 export async function sendNewsletterEmail(
   newsletterId: string,
   recipientEmail: string
@@ -92,7 +80,7 @@ export async function sendNewsletterEmail(
     if (!newsletter) {
       throw new Error(`Newsletter ${newsletterId} not found`);
     }
-
+ 
     const articles = await storage.getNewsletterArticles(newsletterId);
     const date = new Date(newsletter.generatedAt!);
     const formattedDate = date.toLocaleDateString("en-US", {
@@ -100,14 +88,14 @@ export async function sendNewsletterEmail(
       month: "long",
       day: "numeric",
     });
-
+ 
     // ── Pre-fetch all article images before building HTML ──
     console.log(`[IMAGE] Fetching images for ${articles.length} articles...`);
     const articleImages: string[] = await Promise.all(
       articles.map((article, index) => fetchArticleImage(article.headline, index))
     );
     console.log(`[IMAGE] All images ready`);
-
+ 
     const htmlBody = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -126,13 +114,13 @@ export async function sendNewsletterEmail(
   <![endif]-->
 </head>
 <body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-
+ 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;padding:0;">
     <tr>
       <td align="center">
-
+ 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:700px;width:100%;background:#ffffff;">
-
+ 
           <!-- HEADER -->
           <tr>
             <td style="padding:40px 48px 24px;text-align:center;border-bottom:2px solid #0052CC;">
@@ -142,7 +130,7 @@ export async function sendNewsletterEmail(
               <p style="margin:0;font-size:13px;color:#444;font-family:Arial,sans-serif;"><strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today</p>
             </td>
           </tr>
-
+ 
           <!-- EDITION BAR -->
           <tr>
             <td style="background:#F0F6FF;border-bottom:1px solid #DEEBFF;padding:12px 48px;">
@@ -154,11 +142,11 @@ export async function sendNewsletterEmail(
               </table>
             </td>
           </tr>
-
+ 
           <!-- ARTICLES -->
           <tr>
             <td style="padding:0 48px 40px;background:#ffffff;">
-
+ 
               ${articles.map((article, index) => {
                 const imageUrl = articleImages[index] || "";
                 return `
@@ -166,7 +154,7 @@ export async function sendNewsletterEmail(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:36px;border-bottom:2px solid #DEEBFF;padding-bottom:36px;">
                 <tr>
                   <td>
-
+ 
                     <!-- Story label -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
                       <tr>
@@ -175,7 +163,7 @@ export async function sendNewsletterEmail(
                         </td>
                       </tr>
                     </table>
-
+ 
                     <!-- Article image -->
                     ${imageUrl ? `<img
                       src="${imageUrl}"
@@ -183,10 +171,10 @@ export async function sendNewsletterEmail(
                       width="604"
                       style="width:100%;max-width:604px;height:280px;object-fit:cover;display:block;border-radius:8px;margin-bottom:20px;border:1px solid #DEEBFF;"
                     />` : ""}
-
+ 
                     <!-- Headline -->
                     <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#0747A6;font-family:Georgia,serif;line-height:1.4;border-bottom:2px solid #EEF4FF;padding-bottom:12px;">${article.headline}</h2>
-
+ 
                     <!-- Summary box -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
                       <tr>
@@ -195,7 +183,7 @@ export async function sendNewsletterEmail(
                         </td>
                       </tr>
                     </table>
-
+ 
                     <!-- Source + Read more -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #EBECF0;padding-top:14px;">
                       <tr>
@@ -203,16 +191,16 @@ export async function sendNewsletterEmail(
                         <td align="right"><a href="${article.sourceUrl}" target="_blank" style="font-size:13px;color:#0052CC;text-decoration:none;font-weight:600;font-family:Arial,sans-serif;">Read full story →</a></td>
                       </tr>
                     </table>
-
+ 
                   </td>
                 </tr>
               </table>
               `;
               }).join("")}
-
+ 
             </td>
           </tr>
-
+ 
           <!-- FOOTER -->
           <tr>
             <td style="background:#F8F9FA;border-top:1px solid #DEEBFF;padding:28px 48px;text-align:center;">
@@ -225,53 +213,66 @@ export async function sendNewsletterEmail(
               </p>
             </td>
           </tr>
-
+ 
         </table>
-
+ 
       </td>
     </tr>
   </table>
-
+ 
 </body>
 </html>`;
-
+ 
     const textBody = `
 Navjivan — Daily Cloud Intelligence Briefing
 ${formattedDate}
 Companies: ${newsletter.companies}
-
+ 
 ${articles.map((article, index) => `
 ${index + 1}. ${article.headline}
-
+ 
 ${article.summary}
-
+ 
 Source: ${article.sourceName}
 Read more: ${article.sourceUrl}
 `).join("\n---\n")}
-
+ 
 © ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.
 `;
-
-    const attachments: any[] = [];
-
-    const mailOptions = {
-      from: process.env.SMTP_FROM || '"CloudSutra by Navjivan" <noreply@navjivan.com>',
-      to: recipientEmail,
-      subject: `Navjivan — Your Cloud Briefing · ${formattedDate}`,
-      text: textBody,
-      html: htmlBody,
-      attachments,
-    };
-
+ 
+    // ── Build SES Command ──
+    const command = new SendEmailCommand({
+      Source: process.env.SES_FROM_ADDRESS!,
+      Destination: {
+        ToAddresses: [recipientEmail],
+      },
+      Message: {
+        Subject: {
+          Data: `Navjivan — Your Cloud Briefing · ${formattedDate}`,
+          Charset: "UTF-8",
+        },
+        Body: {
+          Html: {
+            Data: htmlBody,
+            Charset: "UTF-8",
+          },
+          Text: {
+            Data: textBody,
+            Charset: "UTF-8",
+          },
+        },
+      },
+    });
+ 
     if (USE_REAL_EMAIL) {
-      const info = await getTransporter().sendMail(mailOptions);
-      console.log(`Email sent to ${recipientEmail}: ${info.messageId}`);
+      const response = await sesClient.send(command);
+      console.log(`Email sent to ${recipientEmail}: MessageId=${response.MessageId}`);
     } else {
       console.log(`[MOCK] Email would be sent to: ${recipientEmail}`);
-      console.log(`Subject: ${mailOptions.subject}`);
+      console.log(`Subject: Navjivan — Your Cloud Briefing · ${formattedDate}`);
       console.log(`Articles: ${articles.length}`);
     }
-
+ 
     await storage.markNewsletterSent(newsletterId);
   } catch (error) {
     console.error("Error sending email:", error);
