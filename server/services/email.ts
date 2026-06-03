@@ -3,21 +3,13 @@ import { storage } from "../storage";
  
 // ── SES Client Setup ──
 const sesClient = new SESClient({
-  region: process.env.AWS_REGION || "ap-south-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+  region: "ap-south-2",   // hardcoded since AWS_REGION is reserved in Lambda
 });
- 
-const USE_REAL_EMAIL = !!(
-  process.env.AWS_ACCESS_KEY_ID &&
-  process.env.AWS_SECRET_ACCESS_KEY &&
-  process.env.SES_FROM_ADDRESS
-);
- 
+
+const USE_REAL_EMAIL = !!process.env.SES_FROM_ADDRESS;
+
 if (USE_REAL_EMAIL) {
-  console.log(`Email service: Using AWS SES in region ${process.env.AWS_REGION}`);
+  console.log(`Email service: Using AWS SES`);
 } else {
   console.log("Email service: Using mock mode (emails will be logged, not sent)");
 }
