@@ -17,13 +17,16 @@ const KEY_NAME                 = process.env.EC2_KEY_NAME!;
 const AUTO_STOP_MINS           = parseInt(process.env.AUTO_STOP_MINUTES || "15");
 const ELASTIC_IP               = process.env.ELASTIC_IP!;
 const ELASTIC_IP_ALLOCATION_ID = process.env.ELASTIC_IP_ALLOCATION_ID!;
+const EC2_SUBNET_ID            = process.env.EC2_SUBNET_ID!;
 
 // ── Wait for EC2 to reach a target state ──
+// Returns true as soon as state matches — does NOT wait for public IP
+// (Elastic IP is assigned separately after this)
 async function waitForInstanceState(
   instanceId: string,
   targetState: string,
   maxWaitSeconds = 120
-): Promise<string | null> {
+): Promise<boolean> {
   const interval = 5000;
   const maxAttempts = (maxWaitSeconds * 1000) / interval;
 
@@ -36,17 +39,16 @@ async function waitForInstanceState(
 
     const instance = result.Reservations?.[0]?.Instances?.[0];
     const state = instance?.State?.Name;
-    const publicIp = instance?.PublicIpAddress;
 
     console.log(`[EC2] Instance ${instanceId} → state: ${state}`);
 
-    if (state === targetState && publicIp) {
-      return publicIp;
+    if (state === targetState) {
+      return true;   // ← return as soon as running, don't wait for public IP
     }
   }
 
   console.error(`[EC2] Timed out waiting for ${targetState}`);
-  return null;
+  return false;
 }
 
 // ── Check if an instance from this AMI is already running ──
@@ -84,6 +86,7 @@ sudo shutdown -h now`
       MaxCount:         1,
       KeyName:          KEY_NAME,
       SecurityGroupIds: [SECURITY_GROUP],
+      SubnetId:         EC2_SUBNET_ID,
       UserData:         userData,
       TagSpecifications: [
         {
@@ -132,20 +135,20 @@ export const handler = async (event: any) => {
     console.log("[EC2] No running instance — starting new one from AMI...");
     const instanceId = await startNewInstance();
 
-    // 3. Wait for it to reach "running" state (up to 2 minutes)
+    // 3. Wait for instance to reach "running" state (up to 2 minutes)
     console.log("[EC2] Waiting for instance to be ready...");
-    const publicIp = await waitForInstanceState(instanceId, "running", 120);
+    const isReady = await waitForInstanceState(instanceId, "running", 120);
 
-    if (!publicIp) {
+    if (!isReady) {
       throw new Error("Instance did not reach running state within 2 minutes");
     }
 
-    // 4. Reassign Elastic IP to this new instance
+    // 4. Assign fixed Elastic IP to this new instance
     await assignElasticIp(instanceId);
 
     console.log(`✅ Instance ready — redirecting to http://${ELASTIC_IP}`);
 
-    // 5. Redirect user to fixed Elastic IP
+    // 5. Redirect user to fixed Elastic IP (never changes)
     return buildRedirectResponse(`http://${ELASTIC_IP}`);
 
   } catch (error: any) {
