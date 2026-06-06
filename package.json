@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1063.0",
-    "@aws-sdk/client-ec2": "^3.0.0",
+    "@aws-sdk/client-ec2": "^3.1063.0",
     "@aws-sdk/client-ses": "^3.1059.0",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
