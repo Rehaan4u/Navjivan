@@ -1,5 +1,3 @@
-// ── This replaces the htmlBody section in your email.ts ──
-// ── Drop this into your sendNewsletterEmail function ──
 export function buildEmailHtml(
   formattedDate: string,
   articles: any[],
@@ -54,10 +52,10 @@ export function buildEmailHtml(
 
             ${articles.map((article, index) => {
               const imageUrl = articleImages[index] || "";
-              
-              // Split summary into paragraphs
+
+              // Split summary into paragraphs on ||PARA|| delimiter
               const paragraphs = article.summary
-                .split(/\\n\\n/)
+                .split(/\|\|PARA\|\|/)
                 .filter((p: string) => p.trim().length > 0);
 
               // Separate "How is this useful" paragraph
@@ -72,6 +70,12 @@ export function buildEmailHtml(
               const accentColor = isEven ? "#1565C0" : "#6A1B9A";
               const lightBg = isEven ? "#E3F2FD" : "#F3E5F5";
               const badgeColor = isEven ? "#1565C0" : "#6A1B9A";
+
+              // "How is this useful" gets its own bold highlight colors
+              const usefulBg = isEven ? "#FFF8E1" : "#F3E5F5";
+              const usefulBorder = isEven ? "#F9A825" : "#8E24AA";
+              const usefulHeaderColor = isEven ? "#E65100" : "#6A1B9A";
+              const usefulLabelBg = isEven ? "#F9A825" : "#8E24AA";
 
               return `
               <!-- ARTICLE ${index + 1} -->
@@ -110,29 +114,46 @@ export function buildEmailHtml(
                       />
                     </div>` : ""}
 
-                    <!-- Main paragraphs -->
+                    <!-- Main paragraphs (Story + Ripple Effect) -->
                     ${mainParas.map((para: string) => `
                     <p style="margin:0 0 16px;font-size:15px;line-height:1.9;color:#212121;font-family:Georgia,serif;">
                       ${para.trim()}
                     </p>`).join("")}
 
-                    <!-- How is this useful box -->
+                    <!-- ═══ HOW IS THIS USEFUL — boldly highlighted box ═══ -->
                     ${usefulPara ? `
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;margin-bottom:8px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                      style="margin-top:28px;margin-bottom:8px;border-radius:12px;overflow:hidden;">
                       <tr>
-                        <td style="background:${lightBg};border-left:4px solid ${accentColor};border-radius:0 10px 10px 0;padding:20px 24px;">
-                          <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:2px;color:${accentColor};text-transform:uppercase;font-family:Arial,sans-serif;">
-                            🎯 How is this useful to you?
-                          </p>
-                          <p style="margin:0;font-size:14px;line-height:1.85;color:#212121;font-family:Georgia,serif;">
-                            ${usefulPara.replace(/how is this useful to you\??:?/i, "").trim()}
-                          </p>
+                        <!-- Thick colored left bar -->
+                        <td width="6" style="background:${usefulBorder};border-radius:12px 0 0 12px;">&nbsp;</td>
+                        <td style="background:${usefulBg};padding:0;">
+
+                          <!-- Label bar at top -->
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                              <td style="background:${usefulLabelBg};padding:10px 20px;border-radius:0 8px 0 0;">
+                                <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:2.5px;color:#FFFFFF;text-transform:uppercase;font-family:Arial,sans-serif;">
+                                  🎯 &nbsp;How Is This Useful To You?
+                                </p>
+                              </td>
+                            </tr>
+                            <!-- Content -->
+                            <tr>
+                              <td style="padding:18px 20px 20px;">
+                                <p style="margin:0;font-size:15px;line-height:1.9;color:#212121;font-family:Georgia,serif;">
+                                  ${usefulPara.replace(/how is this useful to you\??:?/i, "").trim()}
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+
                         </td>
                       </tr>
                     </table>` : ""}
 
                     <!-- Read more -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
                       <tr>
                         <td style="background:${accentColor};border-radius:6px;padding:10px 24px;">
                           <a href="${article.sourceUrl}" target="_blank"
@@ -176,3 +197,4 @@ export function buildEmailHtml(
 </body>
 </html>`;
 }
+
