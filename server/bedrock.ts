@@ -11,8 +11,8 @@ const bedrock = new BedrockRuntimeClient({
 });
 
 // ── Model IDs ──
-const SUMMARY_MODEL = "ap.anthropic.claude-haiku-4-5-20251001-v1:0";
-const SCORING_MODEL = "ap.anthropic.claude-haiku-4-5-20251001-v1:0";
+const SUMMARY_MODEL = "global.anthropic.claude-haiku-4-5-20251001-v1:0";
+const SCORING_MODEL = "global.anthropic.claude-haiku-4-5-20251001-v1:0";
 
 // ── Helper: call Bedrock with Claude model ──
 async function invokeClause(
@@ -65,7 +65,7 @@ ${newsText}
 Return ONLY valid JSON, nothing else:
 {
   "headline": "A question-style headline — witty, intriguing, under 12 words. Make it sound like something a smart friend would ask you at coffee. Example style: 'Is AWS Finally Killing the Last Reason to Stay On-Premise?'",
-  "summary": "Write exactly 3 paragraphs separated by \\n\\n. Each paragraph 4-5 sentences.\\n\\nPara 1 — THE STORY: Start with one relevant emoji. Hook the reader immediately. What happened, why now, what forced this move. Make them feel the weight of it.\\n\\nPara 2 — THE RIPPLE EFFECT: What does this mean for the cloud industry? Who wins, who loses, what changes for engineers, architects, CTOs? Be specific, not vague.\\n\\nPara 3 — HOW IS THIS USEFUL TO YOU?: Speak directly to a cloud engineer or someone breaking into cloud (like a fresher or junior). What should they learn, watch, or do because of this news? Be practical, encouraging, and specific. End with one forward-looking sentence."
+  "summary": "Write exactly 3 paragraphs separated by the delimiter ||PARA|| between them (no newlines, no line breaks between paragraphs)". Each paragraph 4-5 sentences.\\n\\nPara 1 — THE STORY: Start with one relevant emoji. Hook the reader immediately. What happened, why now, what forced this move. Make them feel the weight of it.\\n\\nPara 2 — THE RIPPLE EFFECT: What does this mean for the cloud industry? Who wins, who loses, what changes for engineers, architects, CTOs? Be specific, not vague.\\n\\nPara 3 — HOW IS THIS USEFUL TO YOU?: Speak directly to a cloud engineer or someone breaking into cloud (like a fresher or junior). What should they learn, watch, or do because of this news? Be practical, encouraging, and specific. End with one forward-looking sentence."
 }`;
 
   try {
