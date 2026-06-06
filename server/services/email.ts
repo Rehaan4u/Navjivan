@@ -1,6 +1,7 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { storage } from "../storage";
- 
+import { buildEmailHtml } from "./email-template";
+
 // ── SES Client Setup ──
 const sesClient = new SESClient({
   region: "ap-south-2",   // hardcoded since AWS_REGION is reserved in Lambda
@@ -87,151 +88,29 @@ export async function sendNewsletterEmail(
       articles.map((article, index) => fetchArticleImage(article.headline, index))
     );
     console.log(`[IMAGE] All images ready`);
- 
-    const htmlBody = `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-  <title>Navjivan</title>
-  <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
-</head>
-<body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,sans-serif;-webkit-font-smoothing:antialiased;">
- 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;padding:0;">
-    <tr>
-      <td align="center">
- 
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:700px;width:100%;background:#ffffff;">
- 
-          <!-- HEADER -->
-          <tr>
-            <td style="padding:40px 48px 24px;text-align:center;border-bottom:2px solid #0052CC;">
-              <p style="margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:3px;color:#0052CC;text-transform:uppercase;font-family:Arial,sans-serif;">Daily Cloud Intelligence Briefing</p>
-              <h1 style="margin:0 0 4px;font-size:40px;font-weight:900;color:#0A0F2E;font-family:Georgia,serif;letter-spacing:-1px;">Navjivan</h1>
-              <p style="margin:0 0 16px;font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Est. 1919 · Reborn in AI</p>
-              <p style="margin:0;font-size:13px;color:#444;font-family:Arial,sans-serif;"><strong>${formattedDate}</strong> &nbsp;·&nbsp; ${articles.length} stories today</p>
-            </td>
-          </tr>
- 
-          <!-- EDITION BAR -->
-          <tr>
-            <td style="background:#F0F6FF;border-bottom:1px solid #DEEBFF;padding:12px 48px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="font-size:12px;color:#5E6C84;font-family:Arial,sans-serif;">${formattedDate}</td>
-                  <td align="right" style="font-size:11px;color:#0052CC;font-family:Arial,sans-serif;font-weight:700;">Tracking: ${newsletter.companies}</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
- 
-          <!-- ARTICLES -->
-          <tr>
-            <td style="padding:0 48px 40px;background:#ffffff;">
- 
-              ${articles.map((article, index) => {
-                const imageUrl = articleImages[index] || "";
-                return `
-              <!-- ARTICLE ${index + 1} -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:36px;border-bottom:2px solid #DEEBFF;padding-bottom:36px;">
-                <tr>
-                  <td>
- 
-                    <!-- Story label -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
-                      <tr>
-                        <td style="background:#EEF4FF;border-left:3px solid #0052CC;padding:4px 12px;border-radius:0 4px 4px 0;">
-                          <span style="font-size:10px;font-weight:700;letter-spacing:3px;color:#0052CC;text-transform:uppercase;font-family:Arial,sans-serif;">Story ${index + 1} of ${articles.length}</span>
-                        </td>
-                      </tr>
-                    </table>
- 
-                    <!-- Article image -->
-                    ${imageUrl ? `<img
-                      src="${imageUrl}"
-                      alt="${article.headline.replace(/"/g, "&quot;")}"
-                      width="604"
-                      style="width:100%;max-width:604px;height:280px;object-fit:cover;display:block;border-radius:8px;margin-bottom:20px;border:1px solid #DEEBFF;"
-                    />` : ""}
- 
-                    <!-- Headline -->
-                    <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#0747A6;font-family:Georgia,serif;line-height:1.4;border-bottom:2px solid #EEF4FF;padding-bottom:12px;">${article.headline}</h2>
- 
-                    <!-- Summary box -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
-                      <tr>
-                        <td style="background:#F8FBFF;border-left:3px solid #4C9AFF;border-radius:0 6px 6px 0;padding:16px 20px;">
-                          <p style="margin:0;font-size:15px;line-height:1.85;color:#1A1A2E;font-family:Georgia,serif;font-weight:400;">${article.summary}</p>
-                        </td>
-                      </tr>
-                    </table>
- 
-                    <!-- Source + Read more -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #EBECF0;padding-top:14px;">
-                      <tr>
-                        <td style="font-size:11px;font-weight:700;color:#5E6C84;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif;">${article.sourceName}</td>
-                        <td align="right"><a href="${article.sourceUrl}" target="_blank" style="font-size:13px;color:#0052CC;text-decoration:none;font-weight:600;font-family:Arial,sans-serif;">Read full story →</a></td>
-                      </tr>
-                    </table>
- 
-                  </td>
-                </tr>
-              </table>
-              `;
-              }).join("")}
- 
-            </td>
-          </tr>
- 
-          <!-- FOOTER -->
-          <tr>
-            <td style="background:#F8F9FA;border-top:1px solid #DEEBFF;padding:28px 48px;text-align:center;">
-              <p style="margin:0 0 6px;font-size:11px;color:#888;font-family:Arial,sans-serif;">© ${new Date().getFullYear()} Navjivan · CloudSutra — Your daily dispatch from the cloud frontier. Read the cloud.</p>
-              <p style="margin:0 0 8px;font-size:11px;color:#aaa;font-family:Arial,sans-serif;">You're receiving this because you subscribed to daily cloud industry intelligence.</p>
-              <p style="margin:0;font-size:11px;font-family:Arial,sans-serif;">
-                <a href="#" style="color:#0052CC;text-decoration:none;">Unsubscribe</a>
-                &nbsp;·&nbsp;
-                <a href="#" style="color:#0052CC;text-decoration:none;">Privacy Policy</a>
-              </p>
-            </td>
-          </tr>
- 
-        </table>
- 
-      </td>
-    </tr>
-  </table>
- 
-</body>
-</html>`;
- 
-    const textBody = `
-Navjivan — Daily Cloud Intelligence Briefing
-${formattedDate}
-Companies: ${newsletter.companies}
- 
-${articles.map((article, index) => `
-${index + 1}. ${article.headline}
- 
-${article.summary}
- 
-Source: ${article.sourceName}
-Read more: ${article.sourceUrl}
-`).join("\n---\n")}
- 
-© ${new Date().getFullYear()} Navjivan. Inspired by Mahatma Gandhi's newspaper of 1919.
-`;
- 
+    const htmlBody = buildEmailHtml(formattedDate, articles, articleImages, newsletter);
+
+          const textBody = `
+      Navjivan — Daily Cloud Intelligence Briefing
+      ${formattedDate}
+      Companies: ${newsletter.companies}
+
+      ${articles
+        .map(
+          (article, index) => `
+      ${index + 1}. ${article.headline}
+
+      ${article.summary}
+
+      Source: ${article.sourceName || "Unknown"}
+      Read more: ${article.sourceUrl || ""}
+      `
+        )
+        .join("\n---------------------------------\n")}
+
+      © ${new Date().getFullYear()} Navjivan
+      `;
+     
     // ── Build SES Command ──
     const command = new SendEmailCommand({
       Source: process.env.SES_FROM_ADDRESS!,
