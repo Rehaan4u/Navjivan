@@ -1,30 +1,68 @@
-import Groq from "groq-sdk";
+import {
+  BedrockRuntimeClient,
+  InvokeModelCommand,
+} from "@aws-sdk/client-bedrock-runtime";
 import pLimit from "p-limit";
 import pRetry, { AbortError } from "p-retry";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+// ── Bedrock Client — uses Lambda/EC2 IAM role automatically ──
+const bedrock = new BedrockRuntimeClient({
+  region: "ap-south-2",
 });
 
-const SUMMARY_MODEL = "llama-3.3-70b-versatile";
-const SCORING_MODEL = "llama-3.1-8b-instant";
+// ── Model IDs ──
+// Claude Haiku — fast, cheap, great for summaries
+const SUMMARY_MODEL = "ap.anthropic.claude-haiku-4-5-20251001-v1:0";
+// Amazon Titan — fast, very cheap, great for scoring
+const SCORING_MODEL = "ap.anthropic.claude-haiku-4-5-20251001-v1:0";
 
+// ── Helper: call Bedrock with Claude model ──
+async function invokeClause(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number = 800
+): Promise<string> {
+  const body = JSON.stringify({
+    anthropic_version: "bedrock-2023-05-31",
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: userPrompt,
+      },
+    ],
+  });
+
+  const command = new InvokeModelCommand({
+    modelId: SUMMARY_MODEL,
+    contentType: "application/json",
+    accept: "application/json",
+    body: Buffer.from(body),
+  });
+
+  const response = await bedrock.send(command);
+  const result = JSON.parse(new TextDecoder().decode(response.body));
+  return result.content[0].text;
+}
+
+// ── Helper: check if error is throttling/rate limit ──
 function isRateLimitError(error: any): boolean {
   const errorMsg = error?.message || String(error);
   return (
     errorMsg.includes("429") ||
-    errorMsg.includes("RATELIMIT_EXCEEDED") ||
-    errorMsg.toLowerCase().includes("quota") ||
+    errorMsg.includes("ThrottlingException") ||
+    errorMsg.toLowerCase().includes("too many requests") ||
     errorMsg.toLowerCase().includes("rate limit")
   );
 }
 
+// ── Generate headline + summary for a news article ──
 export async function generateNewsSummary(
   newsText: string,
   company: string
 ): Promise<{ headline: string; summary: string }> {
 
-  // ✅ CORRECT PLACE for both prompts — inside generateNewsSummary
   const systemPrompt = `You are a master financial storyteller — part Bloomberg analyst, part Hemingway. You write payment industry news in a narrative style that draws readers in like a novel. Your writing is precise but never dry, insightful but never verbose. Every summary should feel like a mini-story with a beginning (what happened), a middle (why it matters), and an end (what comes next). Use vivid but professional language. Never use bullet points. Never sound like a press release.`;
 
   const userPrompt = `Write a deep narrative news brief about ${company} for payments industry professionals based on this article:
@@ -52,23 +90,15 @@ Return ONLY this JSON, nothing else before or after it:
     const response = await pRetry(
       async () => {
         try {
-          const completion = await groq.chat.completions.create({
-            model: SUMMARY_MODEL,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            // ✅ No response_format — parse manually to handle long narratives
-            max_tokens: 800,
-          });
+          const content = await invokeClause(systemPrompt, userPrompt, 800);
 
-          const content = completion.choices[0]?.message?.content || "";
-
-          // ✅ Robust extraction — handles cases where model forgets JSON quotes
+          // ── Parse JSON from response ──
           const headlineMatch = content.match(/"headline"\s*:\s*"([^"]+)"/);
-          const summaryMatch = content.match(/"summary"\s*:\s*"([\s\S]+?)"\s*\n?\s*\}/);
+          const summaryMatch = content.match(
+            /"summary"\s*:\s*"([\s\S]+?)"\s*\n?\s*\}/
+          );
 
-          // Fallback: grab everything after "summary":
+          // Fallback if regex fails
           const summaryFallback = content
             .replace(/[\s\S]*"summary"\s*:\s*/, "")
             .replace(/^"/, "")
@@ -77,13 +107,14 @@ Return ONLY this JSON, nothing else before or after it:
 
           return {
             headline: headlineMatch?.[1] || "Payments Industry Update",
-            summary: summaryMatch?.[1] || summaryFallback || content.slice(0, 500),
+            summary:
+              summaryMatch?.[1] || summaryFallback || content.slice(0, 500),
           };
         } catch (error: any) {
           if (isRateLimitError(error)) {
-            throw error;
+            throw error; // retry on rate limit
           }
-          throw new AbortError(error);
+          throw new AbortError(error); // don't retry other errors
         }
       },
       {
@@ -104,16 +135,7 @@ Return ONLY this JSON, nothing else before or after it:
   }
 }
 
-export async function batchGenerateSummaries(
-  newsItems: Array<{ text: string; company: string }>
-): Promise<Array<{ headline: string; summary: string }>> {
-  const limit = pLimit(2);
-  const promises = newsItems.map((item) =>
-    limit(() => generateNewsSummary(item.text, item.company))
-  );
-  return await Promise.all(promises);
-}
-
+// ── Score how relevant an article is to a company (0-100) ──
 export async function scoreArticleRelevance(
   title: string,
   text: string,
@@ -125,8 +147,9 @@ export async function scoreArticleRelevance(
       ? text.substring(0, maxTextLength) + "..."
       : text;
 
-  // ✅ scoring prompt stays here, separate from summary prompt
-const prompt = `You are an AI analyst for the payments industry. Score this article's relevance to the company "${company}".
+  const systemPrompt = `You are an AI analyst. Always respond with valid JSON only.`;
+
+  const userPrompt = `You are an AI analyst for the payments industry. Score this article's relevance to the company "${company}".
 
 Article Title: ${title}
 Article Text: ${truncatedText}
@@ -145,15 +168,7 @@ Return ONLY a JSON object with a single "score" field containing an integer from
     const response = await pRetry(
       async () => {
         try {
-          const completion = await groq.chat.completions.create({
-            model: SCORING_MODEL,
-            messages: [{ role: "user", content: prompt }],
-            response_format: { type: "json_object" },
-            max_tokens: 50,
-          });
-
-          const content =
-            completion.choices[0]?.message?.content || '{"score": 50}';
+          const content = await invokeClause(systemPrompt, userPrompt, 50);
           const parsed = JSON.parse(content);
           return parsed.score || 50;
         } catch (error: any) {
@@ -176,4 +191,15 @@ Return ONLY a JSON object with a single "score" field containing an integer from
     console.error("Error scoring article relevance:", error);
     return 50;
   }
+}
+
+// ── Batch process multiple articles with concurrency limit ──
+export async function batchGenerateSummaries(
+  newsItems: Array<{ text: string; company: string }>
+): Promise<Array<{ headline: string; summary: string }>> {
+  const limit = pLimit(2); // max 2 concurrent Bedrock calls
+  const promises = newsItems.map((item) =>
+    limit(() => generateNewsSummary(item.text, item.company))
+  );
+  return await Promise.all(promises);
 }

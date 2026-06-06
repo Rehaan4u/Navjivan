@@ -2,7 +2,7 @@ import { storage } from "../storage";
 import type { Article } from "@shared/schema";
 import { scrapeArticleContent } from "./scraper";
 import { recordFeedHealth, printFeedHealthSummary } from "./feedHealth";
-import { generateNewsSummary, scoreArticleRelevance } from "../groq";
+import { generateNewsSummary, scoreArticleRelevance } from "../bedrock";
 import Parser from "rss-parser";
 import pLimit from "p-limit";
 import { createHash } from "crypto";
