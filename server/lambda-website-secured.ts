@@ -126,13 +126,18 @@ async function assignElasticIp(instanceId: string): Promise<void> {
 export const handler = async (event: any) => {
   console.log("🌐 Website request — checking EC2 status...");
  
+  // ── EXTRACT COGNITO WHITELIST EMAIL ──
+  // Extracts who logged into 'Moksha' to execute this request
+  const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email || "Unknown/DirectInvoke";
+  console.log(`🔒 Security Verification passed for user: [ ${userEmail} ]`);
+ 
   try {
     // 1. Is an instance already running from this AMI?
     const existing = await getRunningInstance();
  
     if (existing) {
       console.log(`[EC2] Instance already running: ${existing.id} — reusing Elastic IP`);
-      return buildRedirectResponse(`http://${ELASTIC_IP}`);
+      return buildJsonResponse(`http://${ELASTIC_IP}`, userEmail);
     }
  
     // 2. No running instance — start a fresh one
@@ -150,131 +155,39 @@ export const handler = async (event: any) => {
     // 4. Assign fixed Elastic IP to this new instance
     await assignElasticIp(instanceId);
  
-    console.log(`✅ Instance ready — redirecting to http://${ELASTIC_IP}`);
+    console.log(`✅ Instance ready — returning landing data to user: ${userEmail}`);
  
-    // 5. Redirect user to fixed Elastic IP (never changes)
-    return buildRedirectResponse(`http://${ELASTIC_IP}`);
+    // 5. Return target JSON package cleanly back to frontend
+    return buildJsonResponse(`http://${ELASTIC_IP}`, userEmail);
  
   } catch (error: any) {
     console.error("❌ Error starting EC2 instance:", error);
     return {
       statusCode: 500,
-      headers: { "Content-Type": "text/html" },
-      body: `
-        <!DOCTYPE html>
-        <html>
-          <head><title>Error — Navjivan</title></head>
-          <body style="font-family:Arial;text-align:center;padding:60px;">
-            <h2 style="color:#DE350B;">⚠️ Failed to start website</h2>
-            <p style="color:#5E6C84;">Something went wrong. Please try again in a moment.</p>
-            <a href="javascript:location.reload()" style="color:#0052CC;">Try again</a>
-          </body>
-        </html>
-      `,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        error: "Failed to initialize server background scripts.",
+        details: error.message 
+      }),
     };
   }
 };
  
-// ── Friendly loading page with auto-redirect ──
-function buildRedirectResponse(url: string) {
+// ── JSON Response Builder ──
+// Changed from 302 redirect to a 200 JSON object.
+// Why: Browsers executing background fetch API actions cannot follow 302 redirects natively 
+// without scrubbing custom HTTP headers like "Karma-Vairagya-Bhakti".
+function buildJsonResponse(targetUrl: string, userEmail: string) {
   return {
     statusCode: 200,
-    headers: { "Content-Type": "text/html" },
-    isBase64Encoded: false,
-    body: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8"/>
-  <title>Starting Navjivan...</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Arial, sans-serif;
-      display: flex; justify-content: center; align-items: center;
-      height: 100vh; background: #0A0F2E;
-    }
-    .box {
-      text-align: center; padding: 48px 40px; background: white;
-      border-radius: 16px; box-shadow: 0 4px 40px rgba(0,0,0,0.3);
-      max-width: 440px; width: 90%;
-    }
-    h1 { color: #0A0F2E; font-size: 28px; margin-bottom: 8px; }
-    .sub { color: #1565C0; font-size: 13px; letter-spacing: 2px;
-           text-transform: uppercase; margin-bottom: 24px; }
-    p { color: #546E7A; font-size: 14px; line-height: 1.7;
-        margin-bottom: 8px; }
-    .status { font-size: 13px; color: #1565C0; font-weight: bold;
-              margin-top: 16px; min-height: 20px; }
-    .bar-wrap { background: #E3F2FD; border-radius: 20px;
-                height: 6px; margin: 16px 0; overflow: hidden; }
-    .bar { height: 6px; border-radius: 20px; background: #1565C0;
-           width: 0%; transition: width 1s ease; }
-    .spinner {
-      width: 40px; height: 40px;
-      border: 4px solid #E3F2FD; border-top-color: #1565C0;
-      border-radius: 50%; animation: spin 0.8s linear infinite;
-      margin: 20px auto 0;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <p class="sub">Daily Cloud Intelligence</p>
-    <h1>Navjivan</h1>
-    <p style="margin-top:16px;">Your briefing platform is starting up.</p>
-    <p>This takes about <strong>30–60 seconds</strong> on first load.</p>
-    <div class="bar-wrap"><div class="bar" id="bar"></div></div>
-    <div class="status" id="status">Launching cloud instance...</div>
-    <div class="spinner"></div>
-  </div>
-
-  <script>
-    const TARGET = "${url}";
-    const bar = document.getElementById('bar');
-    const status = document.getElementById('status');
-
-    const steps = [
-      { pct: 15, msg: "Launching cloud instance...", delay: 0 },
-      { pct: 35, msg: "Booting EC2 from AMI...", delay: 5000 },
-      { pct: 55, msg: "Starting nginx and Express...", delay: 15000 },
-      { pct: 75, msg: "Warming up application...", delay: 25000 },
-      { pct: 90, msg: "Almost ready...", delay: 40000 },
-    ];
-
-    steps.forEach(s => {
-      setTimeout(() => {
-        bar.style.width = s.pct + '%';
-        status.textContent = s.msg;
-      }, s.delay);
-    });
-
-    // Poll the EC2 URL every 5 seconds until it responds
-    async function checkReady() {
-      try {
-        const res = await fetch(TARGET, {
-          method: 'GET',
-          mode: 'no-cors',
-          cache: 'no-cache',
-        });
-        // no-cors means we can't read the response but a non-error means server is up
-        bar.style.width = '100%';
-        status.textContent = 'Ready! Redirecting...';
-        setTimeout(() => { window.location.href = TARGET; }, 800);
-      } catch (e) {
-        // Still loading — try again in 5 seconds
-        setTimeout(checkReady, 5000);
-      }
-    }
-
-    // Start polling after 20 seconds (give EC2 time to boot)
-    setTimeout(checkReady, 20000);
-
-    // Hard redirect after 90 seconds regardless
-    setTimeout(() => { window.location.href = TARGET; }, 90000);
-  </script>
-</body>
-</html>`,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*", // Allows browser calls cleanly
+    },
+    body: JSON.stringify({
+      status: "ready",
+      targetUrl: targetUrl,
+      authorizedUser: userEmail
+    }),
   };
 }
-

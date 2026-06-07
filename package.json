@@ -10,7 +10,8 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "build:lambda": "esbuild ./server/lambda.ts --platform=node --bundle --format=cjs --external:pg-native --outdir=dist",
-    "build:lambda-website": "esbuild ./server/lambda-website.ts --platform=node --bundle --format=cjs --outdir=dist"
+    "build:lambda-website": "esbuild ./server/lambda-website.ts --platform=node --bundle --format=cjs --outdir=dist",
+    "build:lambda-website-secured": "esbuild ./server/lambda-website-secured.ts --platform=node --bundle --format=cjs --outdir=dist"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1063.0",
