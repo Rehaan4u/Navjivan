@@ -88,6 +88,9 @@ function titleFingerprint(title: string): string {
 // STEP 1A: FETCH ONE CURATED RSS FEED
 // ✅ Records health, filters to 1 week, caps at 50
 // ============================
+
+const MIN_ARTICLE_CONTENT_LENGTH = 200; // chars — below this, not enough for a 3-para summary
+
 async function fetchSingleFeed(
   url: string,
   sourceName: string,
@@ -104,11 +107,18 @@ async function fetchSingleFeed(
         publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
         fetchMethod: "rss" as const,
       }))
-      .filter((item) => isWithinOneWeek(item.publishedAt)) // ✅ last 7 days only
-      .slice(0, MAX_ARTICLES_PER_SOURCE);                  // ✅ max 50 per source
+      .filter((item) => isWithinOneWeek(item.publishedAt))
+      .filter((item) => {                                              // ✅ NEW: drop stubs
+        const hasEnoughContent = item.text.length >= MIN_ARTICLE_CONTENT_LENGTH;
+        if (!hasEnoughContent) {
+          console.log(`[RSS] ⚠️ Skipped short article: "${item.title.substring(0, 50)}" (${item.text.length} chars)`);
+        }
+        return hasEnoughContent;
+      })
+      .slice(0, MAX_ARTICLES_PER_SOURCE);
 
     recordFeedHealth(sourceName, items.length);
-    console.log(`[RSS] ${sourceName}: ${items.length} articles (within 1 week)`);
+    console.log(`[RSS] ${sourceName}: ${items.length} articles (within 1 week, content ≥ ${MIN_ARTICLE_CONTENT_LENGTH} chars)`);
     return items;
   } catch (error: any) {
     recordFeedHealth(sourceName, 0, error?.message || "Unknown error");
@@ -127,7 +137,7 @@ async function fetchAndScrapeGoogleNews(
   company: string,
   parser: Parser
 ): Promise<NewsItem[]> {
-const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(
+  const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(
     company + " cloud"
   )}`;
 
@@ -149,8 +159,6 @@ const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent
       `[Google RSS] ${recentItems.length} articles for "${company}" (within 1 week)`
     );
 
-    // ✅ Scrape full content for every Google News article
-    // Google RSS only gives title + URL, so we need to scrape the actual page
     const enriched = await Promise.all(
       recentItems.map(async (article) => {
         if (!article.text || article.text.length < 150) {
@@ -162,7 +170,7 @@ const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent
             return {
               ...article,
               text: scrapedText,
-              fetchMethod: "scraped" as const, // ✅ marks as scraped not RSS
+              fetchMethod: "scraped" as const,
             };
           }
         }
@@ -170,8 +178,16 @@ const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent
       })
     );
 
-    recordFeedHealth("Google News", enriched.length);
-    return enriched;
+    // ✅ NEW: drop articles that still don't have enough content after scraping
+    const MIN = 200;
+    const filtered = enriched.filter((item) => {
+      const ok = item.text.length >= MIN;
+      if (!ok) console.log(`[Google RSS] ⚠️ Dropped stub after scrape: "${item.title.substring(0, 50)}" (${item.text.length} chars)`);
+      return ok;
+    });
+
+    recordFeedHealth("Google News", filtered.length);
+    return filtered;
   } catch (error: any) {
     recordFeedHealth("Google News", 0, error?.message);
     console.error(`[Google RSS] ❌ Failed: ${error?.message}`);
