@@ -16,32 +16,45 @@ if (USE_REAL_EMAIL) {
 }
  
 // ── Fetch a relevant image URL for a given article headline ──
-async function fetchArticleImage(headline: string, index: number): Promise<string> {
+async function fetchArticleImage(
+  headline: string,
+  index: number,
+  cloudProvider?: "AWS" | "Google" | "Azure"  // ✅ NEW: pass provider in
+): Promise<string> {
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY || "";
- 
-  // Strip leading emoji from AI-generated headlines
+
+  // Strip leading emoji
   const cleanHeadline = headline
     .replace(/^[\uD83C-\uDBFF][\uDC00-\uDFFF]/, "")
     .replace(/^[\u2600-\u27FF]\s*/, "")
     .trim();
- 
-  // Build a focused 2-3 word search query from the headline
-  const searchQuery = cleanHeadline
+
+  // ✅ IMPROVED: smarter keyword extraction
+  // Keep words 3+ chars (was >3, so 4+), remove only stopwords not all short words
+  const STOPWORDS = new Set([
+    "the", "and", "for", "with", "that", "this", "its", "from", "has", "are",
+    "will", "new", "how", "via", "into", "over", "than", "more", "now", "can",
+    "all", "our", "you", "not", "but", "they", "their", "been", "have", "was",
+  ]);
+
+  const keywords = cleanHeadline
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
     .split(" ")
-    .filter((w: string) => w.length > 3)
-    .slice(0, 3)
+    .filter((w) => w.length >= 3 && !STOPWORDS.has(w))  // ✅ 3+ chars, skip stopwords
+    .slice(0, 4)                                          // ✅ up to 4 keywords (was 3)
     .join(" ");
- 
-  // ── Try Unsplash first ──
+
+  const searchQuery = keywords || cleanHeadline.split(" ").slice(0, 3).join(" "); // fallback
+
+  // ── Try Unsplash ──
   if (unsplashKey) {
     try {
-      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(searchQuery + " technology")}&orientation=landscape&client_id=${unsplashKey}`;
-      const response = await fetch(url, {
-        headers: { "Accept-Version": "v1" },
-      });
- 
+      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(
+        searchQuery
+      )}&orientation=landscape&client_id=${unsplashKey}`;
+      const response = await fetch(url, { headers: { "Accept-Version": "v1" } });
+
       if (response.ok) {
         const data = await response.json();
         const imageUrl = data?.urls?.regular || data?.urls?.full || "";
@@ -56,11 +69,23 @@ async function fetchArticleImage(headline: string, index: number): Promise<strin
       console.warn(`[IMAGE] Unsplash fetch failed:`, err);
     }
   }
- 
-  // ── Fallback: Pollinations AI ──
-  const imagePrompt = `Photorealistic editorial news photograph: ${cleanHeadline}. Professional lighting, sharp focus, no text, no logos, high resolution`;
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=350&nologo=true&seed=${index + 7}&model=flux`;
-  console.log(`[IMAGE] Pollinations fallback for: "${cleanHeadline}"`);
+
+  // ✅ IMPROVED: Pollinations prompt now includes provider-specific context
+  const providerContext: Record<string, string> = {
+    AWS:    "Amazon Web Services data center, orange AWS branding, server infrastructure",
+    Google: "Google Cloud Platform data center, Google blue branding, tech infrastructure",
+    Azure:  "Microsoft Azure data center, blue Azure branding, enterprise cloud infrastructure",
+  };
+
+  const providerHint = cloudProvider ? providerContext[cloudProvider] : "cloud computing infrastructure, data center, technology";
+
+  const imagePrompt = `Photorealistic editorial photograph: ${cleanHeadline}. ${providerHint}. Professional lighting, sharp focus, no text overlays, no logos, high resolution, wide angle`;
+
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(
+    imagePrompt
+  )}?width=800&height=350&nologo=true&seed=${index + 7}&model=flux`;
+
+  console.log(`[IMAGE] Pollinations fallback for: "${cleanHeadline}" (provider: ${cloudProvider ?? "generic"})`);
   return pollinationsUrl;
 }
  
