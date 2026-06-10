@@ -24,7 +24,7 @@ interface NewsItem {
 // ============================
 const MAX_ARTICLES_PER_SOURCE = 50;     // max articles taken from any one source
 const BATCH_SIZE = 5;                    // score 5 articles at a time
-const RELEVANCE_THRESHOLD = 50;          // minimum score to pass
+const RELEVANCE_THRESHOLD = 60;          // minimum score to pass
 const BATCH_PASS_THRESHOLD = 3;         // if 3+ pass in a batch, stop scoring this source
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -33,18 +33,20 @@ const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 // ✅ Removed all dead sources (404s and invalid XML)
 // ============================
 const CURATED_RSS_FEEDS = [
-  // Official cloud provider blogs
-  { name: "AWS Blog",           url: "https://aws.amazon.com/blogs/aws/feed/" },
-  { name: "Google Cloud Blog",  url: "https://cloudblog.withgoogle.com/rss/" },
-  { name: "Azure Blog",         url: "https://azure.microsoft.com/en-us/blog/feed/" },
-  // Cloud industry news
-  { name: "The New Stack",      url: "https://thenewstack.io/feed/" },
-  { name: "InfoQ Cloud",        url: "https://feed.infoq.com/cloud/" },
-  { name: "TechCrunch Cloud",   url: "https://techcrunch.com/tag/cloud-computing/feed/" },
-  { name: "SiliconAngle Cloud", url: "https://siliconangle.com/feed/" },
-  { name: "ZDNet Cloud",        url: "https://www.zdnet.com/topic/cloud/rss.xml" },
+  // Official cloud provider engineering blogs
+  { name: "AWS Blog",                url: "https://aws.amazon.com/blogs/aws/feed/" },
+  { name: "AWS Architecture Blog",   url: "https://aws.amazon.com/blogs/architecture/feed/" },
+  { name: "Google Cloud Blog",       url: "https://cloudblog.withgoogle.com/rss/" },
+  { name: "Azure Blog",              url: "https://azure.microsoft.com/en-us/blog/feed/" },
+  // Engineering practices & techniques
+  { name: "The New Stack",           url: "https://thenewstack.io/feed/" },
+  { name: "InfoQ Cloud",             url: "https://feed.infoq.com/cloud/" },
+  { name: "Last Week in AWS",        url: "https://www.lastweekinaws.com/feed/" },
+  { name: "Cloud Native Now",        url: "https://cloudnativenow.com/feed/" },
+  // Community / practitioner focused
+  { name: "CNCF Blog",               url: "https://www.cncf.io/blog/feed/" },
+  { name: "Kubernetes Blog",         url: "https://kubernetes.io/feed.xml" },
 ];
-
 // ============================
 // UTILITY: ONE WEEK FILTER
 // ✅ Only keep articles published in the last 7 days
