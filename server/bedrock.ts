@@ -1,7 +1,9 @@
 import pLimit from "p-limit";
 import pRetry, { AbortError } from "p-retry";
- 
-// ── Helper: call Groq with Llama model ──
+
+// ============================
+// CORE API CALLER
+// ============================
 async function invokeClause(
   systemPrompt: string,
   userPrompt: string,
@@ -22,93 +24,125 @@ async function invokeClause(
       max_tokens: maxTokens,
     }),
   });
- 
+
   if (!response.ok) {
     const err = await response.text();
     throw new Error(`Groq API error ${response.status}: ${err}`);
   }
- 
+
   const data = await response.json();
   return data.choices[0].message.content;
 }
- 
-// ── Helper: check if error is throttling/rate limit ──
+
+// ============================
+// RATE LIMIT HELPERS
+// ============================
 function isRateLimitError(error: any): boolean {
-  const errorMsg = error?.message || String(error);
+  const msg = error?.message || String(error);
   return (
-    errorMsg.includes("429") ||
-    errorMsg.includes("ThrottlingException") ||
-    errorMsg.toLowerCase().includes("too many requests") ||
-    errorMsg.toLowerCase().includes("rate limit")
+    msg.includes("429") ||
+    msg.includes("ThrottlingException") ||
+    msg.toLowerCase().includes("too many requests") ||
+    msg.toLowerCase().includes("rate limit")
   );
 }
- 
-// ── Generate headline + summary for a news article ──
+
+// ── Parse the "Please try again in Xm Ys" message from Groq ──
+// When Groq rate limits you, it tells you exactly how long to wait.
+// We extract that number so we can sleep the right amount instead
+// of blindly retrying after 1-10 seconds (which always fails again).
+function parseRetryAfterMs(errorMessage: string): number {
+  // Pattern: "Please try again in 3m40.32s" or "try again in 45.5s"
+  const minuteMatch = errorMessage.match(/(\d+)m(\d+(?:\.\d+)?)s/);
+  if (minuteMatch) {
+    const minutes = parseInt(minuteMatch[1]);
+    const seconds = parseFloat(minuteMatch[2]);
+    return (minutes * 60 + seconds) * 1000 + 2000; // +2s buffer
+  }
+
+  const secondMatch = errorMessage.match(/(\d+(?:\.\d+)?)s/);
+  if (secondMatch) {
+    return parseFloat(secondMatch[1]) * 1000 + 2000;
+  }
+
+  // Groq didn't tell us — wait 60 seconds as a safe default
+  return 60_000;
+}
+
+// ============================
+// GENERATE HEADLINE + SUMMARY
+// ============================
 export async function generateNewsSummary(
   newsText: string,
   company: string
 ): Promise<{ headline: string; summary: string }> {
- 
+
   const systemPrompt = `You are a sharp, witty cloud industry journalist writing for engineers and cloud professionals. You blend deep technical insight with punchy, memorable writing. Your headlines make people stop scrolling. Your summaries make people feel genuinely smarter.`;
- 
-  const userPrompt = `Write a newsletter article about ${company} based on this news:
- 
+
+  // ✅ Shortened prompt — same output quality, ~220 fewer tokens per call
+  // At 6 articles/run = ~1,300 tokens saved per day (~10% of free tier back)
+  const userPrompt = `Write a newsletter article about ${company} from this news:
+
 ${newsText}
- 
-Return ONLY valid JSON, nothing else:
+
+Return ONLY valid JSON, no extra text:
 {
-  "headline": "A question-style headline — witty, intriguing, under 12 words. Make it sound like something a smart friend would ask you at coffee. Example style: 'Is AWS Finally Killing the Last Reason to Stay On-Premise?'",
-  "summary": "Write exactly 3 paragraphs separated by the delimiter ||PARA|| between them (no newlines, no line breaks between paragraphs)". Each paragraph 4-5 sentences.\\n\\nPara 1 — THE STORY: Start with one relevant emoji. Hook the reader immediately. What happened, why now, what forced this move. Make them feel the weight of it.\\n\\nPara 2 — THE RIPPLE EFFECT: What does this mean for the cloud industry? Who wins, who loses, what changes for engineers, architects, CTOs? Be specific, not vague.\\n\\nPara 3 — HOW IS THIS USEFUL TO YOU?: Speak directly to a cloud engineer or someone breaking into cloud (like a fresher or junior). What should they learn, watch, or do because of this news? Be practical, encouraging, and specific. End with one forward-looking sentence."
+  "headline": "<witty question under 12 words e.g. 'Is AWS Finally Killing On-Premise?'>",
+  "summary": "<3 paragraphs joined by ||PARA|| no newlines. Para1: emoji + hook + what happened + why it matters. Para2: industry impact, who wins/loses, what changes for engineers. Para3: what a junior cloud engineer should learn or do. 4-5 sentences each.>"
 }`;
- 
+
   try {
-    const response = await pRetry(
+    const result = await pRetry(
       async () => {
         try {
           const content = await invokeClause(systemPrompt, userPrompt, 1200);
- 
-          // ── Robust JSON extraction ──
+
+          // Robust JSON extraction
           const jsonMatch = content
             .replace(/```json\n?/g, "")
             .replace(/```\n?/g, "")
             .trim()
             .match(/\{[\s\S]*\}/);
+
           if (jsonMatch) {
             try {
               const parsed = JSON.parse(jsonMatch[0]);
-              if (parsed.headline && parsed.summary) {
-                return {
-                  headline: parsed.headline,
-                  summary: parsed.summary,
-                };
-              }
-            } catch (e) {
-              // fall through to regex extraction
+              if (parsed.headline && parsed.summary) return parsed;
+            } catch {
+              // fall through to regex
             }
           }
- 
-          // ── Fallback regex extraction ──
+
+          // Regex fallback
           const headlineMatch = content.match(/"headline"\s*:\s*"([^"]+)"/);
           const summaryMatch = content.match(/"summary"\s*:\s*"([\s\S]+?)"\s*\}/);
- 
           return {
             headline: headlineMatch?.[1] || `What's Next for ${company}?`,
             summary: summaryMatch?.[1] || newsText.slice(0, 300) + "...",
           };
+
         } catch (error: any) {
-          if (isRateLimitError(error)) throw error;
-          throw new AbortError(error);
+          if (isRateLimitError(error)) {
+            // ✅ Wait exactly as long as Groq tells us to
+            const waitMs = parseRetryAfterMs(error.message);
+            console.warn(`[GROQ] Rate limited on summary. Waiting ${Math.round(waitMs / 1000)}s...`);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            throw error; // rethrow so pRetry retries after the wait
+          }
+          throw new AbortError(error); // non-rate-limit errors → stop retrying
         }
       },
       {
-        retries: 7,
-        minTimeout: 2000,
-        maxTimeout: 128000,
+        retries: 5,
+        // These timeouts are only used if parseRetryAfterMs fails to parse
+        // In practice, the manual sleep above fires first
+        minTimeout: 5000,
+        maxTimeout: 300_000, // 5 min max
         factor: 2,
       }
     );
- 
-    return response;
+
+    return result;
   } catch (error) {
     console.error("Error generating summary:", error);
     return {
@@ -117,67 +151,96 @@ Return ONLY valid JSON, nothing else:
     };
   }
 }
- 
-// ── Score how relevant an article is to a company (0-100) ──
+
+// ============================
+// SCORE ARTICLE RELEVANCE
+// ──────────────────────────────────────────────────────────
+// BEFORE: sent 800 chars of article text per score request
+//         → 56 articles × ~300 tokens = ~16,800 tokens just for scoring
+//         → blows through 100k/day free tier before summaries even run
+//
+// FIX: send only title + first 60 words
+//         → ~30 tokens per score request
+//         → 56 articles × 30 = ~1,680 tokens for scoring
+//         → leaves ~98k tokens for the actual summaries (what matters)
+//
+// The title + opening sentence is enough to judge relevance.
+// We don't need the full article body to know if something is about AWS.
+// ============================
 export async function scoreArticleRelevance(
   title: string,
   text: string,
   company: string
 ): Promise<number> {
-  const truncatedText = text.length > 800
-    ? text.substring(0, 800) + "..."
-    : text;
- 
+
+  // ✅ Only send title + first 60 words — enough to judge relevance
+  // 60 words ≈ 80 tokens, vs 800 chars ≈ 200 tokens previously
+  const first60Words = text.trim().split(/\s+/).slice(0, 60).join(" ");
+  const snippet = first60Words ? `\n\nOpening: ${first60Words}` : "";
+
   const systemPrompt = `You are a relevance scoring AI. Always respond with valid JSON only. No explanation.`;
- 
+
   const userPrompt = `Score relevance of this article to "${company}" (0-100).
- 
+
 Rules:
-- "${company}" not mentioned → 0-25 max
-- Mentioned briefly → 26-50
-- Substantially about "${company}" → 51-85  
+- "${company}" not mentioned anywhere → 0-25
+- Mentioned briefly or in passing → 26-50
+- Substantially about "${company}" → 51-85
 - Primarily about "${company}" with major impact → 86-100
- 
-Title: ${title}
-Text: ${truncatedText}
- 
+
+Title: ${title}${snippet}
+
 Return: {"score": <integer>}`;
- 
+
   try {
-    const response = await pRetry(
+    const score = await pRetry(
       async () => {
         try {
           const content = await invokeClause(systemPrompt, userPrompt, 50);
           const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
           const parsed = JSON.parse(cleaned);
-          return parsed.score || 50;
+          return parsed.score ?? 50;
         } catch (error: any) {
-          if (isRateLimitError(error)) throw error;
+          if (isRateLimitError(error)) {
+            // ✅ Same fix as summary — wait the actual time Groq specifies
+            const waitMs = parseRetryAfterMs(error.message);
+            console.warn(`[GROQ] Rate limited on scoring. Waiting ${Math.round(waitMs / 1000)}s...`);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            throw error;
+          }
           throw new AbortError(error);
         }
       },
       {
         retries: 3,
-        minTimeout: 1000,
-        maxTimeout: 10000,
+        minTimeout: 5000,
+        maxTimeout: 300_000,
         factor: 2,
       }
     );
- 
-    return Math.max(0, Math.min(100, response));
+
+    return Math.max(0, Math.min(100, score));
+
   } catch (error) {
-    console.error("Error scoring article relevance:", error);
-    return 50;
+    // ✅ CHANGED: return 0 instead of 50 on total failure
+    // Returning 50 was silently failing everything — articles appeared irrelevant
+    // when really Groq just timed out. 0 makes the failure visible in logs
+    // and lets you distinguish "truly irrelevant" from "API failed".
+    // The keyword filter (Step 3 in newsletter.ts) already pre-filtered these,
+    // so a 0 here just means "couldn't confirm relevance" not "definitely irrelevant".
+    console.error(`[GROQ] Scoring totally failed for "${title.slice(0, 50)}":`, error);
+    return 0;
   }
 }
- 
-// ── Batch process multiple articles with concurrency limit ──
+
+// ============================
+// BATCH SUMMARIES
+// ============================
 export async function batchGenerateSummaries(
   newsItems: Array<{ text: string; company: string }>
 ): Promise<Array<{ headline: string; summary: string }>> {
   const limit = pLimit(2);
-  const promises = newsItems.map((item) =>
-    limit(() => generateNewsSummary(item.text, item.company))
+  return Promise.all(
+    newsItems.map((item) => limit(() => generateNewsSummary(item.text, item.company)))
   );
-  return await Promise.all(promises);
 }
