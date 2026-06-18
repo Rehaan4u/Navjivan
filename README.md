@@ -24,6 +24,11 @@ The website itself runs on **on-demand EC2 instances** — launched only when us
 
 ## 🏗️ Architecture
 
+
+
+<img width="1120" height="479" alt="Screenshot 2026-06-18 at 08 39 19" src="https://github.com/user-attachments/assets/bb093992-1bc3-4c63-a455-7d4a278ee6ec" />
+
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USER JOURNEY                             │
