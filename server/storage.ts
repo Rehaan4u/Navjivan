@@ -13,6 +13,7 @@ import {
   type Article,
   type SchedulerRun,
 } from "@shared/schema";
+import { accessCodes, type AccessCode } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, inArray } from "drizzle-orm";
 
@@ -86,6 +87,22 @@ export class DatabaseStorage implements IStorage {
     .set({ isActive: true, updatedAt: new Date() })
     .where(eq(subscriptions.userId, userId));
 }
+  async getAccessCode(code: string, email: string): Promise<AccessCode | undefined> {
+    const [record] = await db
+      .select()
+      .from(accessCodes)
+      .where(and(eq(accessCodes.code, code), eq(accessCodes.email, email)))
+      .limit(1);
+    return record;
+  }
+
+  async createAccessCode(code: string, email: string): Promise<AccessCode> {
+    const [record] = await db
+      .insert(accessCodes)
+      .values({ code, email })
+      .returning();
+    return record;
+  }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
