@@ -8,6 +8,7 @@ import {
   timestamp,
   varchar,
   boolean,
+  primaryKey
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -46,6 +47,17 @@ export const subscriptions = pgTable("subscriptions", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Access codes table - tied to a specific email, used alongside Google auth
+export const accessCodes = pgTable("access_codes", {
+  code: varchar("code").notNull(),
+  email: varchar("email").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.code, table.email] }),
+]);
+
+export type AccessCode = typeof accessCodes.$inferSelect;
 
 export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
   user: one(users, {
