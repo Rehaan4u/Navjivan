@@ -12,8 +12,8 @@ import {
   type Newsletter,
   type Article,
   type SchedulerRun,
-} from "@shared/schema";
-import { accessCodes, type AccessCode } from "@shared/schema";
+} from "./schema";
+import { accessCodes, type AccessCode } from "./schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, inArray } from "drizzle-orm";
 
@@ -46,7 +46,8 @@ export interface IStorage {
   getNewsletter(id: string): Promise<Newsletter | undefined>;
   getLastNewsletterBySubscription(subscriptionId: string): Promise<Newsletter | undefined>;
   cleanupOldNewsletters(userId: string): Promise<void>;
-
+  getAccessCode(code: string, email: string): Promise<AccessCode | undefined>;
+  createAccessCode(code: string, email: string): Promise<AccessCode>;
   // Article operations
   createArticle(article: {
     newsletterId: string;
