@@ -10,10 +10,8 @@ import {
   boolean,
   primaryKey
 } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
 
-// Session storage table - required for Replit Auth
+// Session storage table
 export const sessions = pgTable(
   "sessions",
   {
@@ -24,7 +22,7 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - required for Replit Auth
+// User storage table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -38,17 +36,17 @@ export const users = pgTable("users", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
-// Subscription table - stores user newsletter preferences
+// Subscription table
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  companies: text("companies").notNull(), // Comma-separated company names (max 3)
+  companies: text("companies").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Access codes table - tied to a specific email, used alongside Google auth
+// Access codes table
 export const accessCodes = pgTable("access_codes", {
   code: varchar("code").notNull(),
   email: varchar("email").notNull(),
@@ -67,29 +65,20 @@ export const subscriptionsRelations = relations(subscriptions, ({ one, many }) =
   newsletters: many(newsletters),
 }));
 
-export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
-  id: true,
-  userId: true, // userId comes from authenticated session, not request body
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  companies: z.string().min(1, "At least one company is required"),
-});
-
-export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
 export type Subscription = typeof subscriptions.$inferSelect;
 
-// Newsletter table - stores generated newsletters
+// Newsletter table
 export const newsletters = pgTable("newsletters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   subscriptionId: varchar("subscription_id").notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  companies: text("companies").notNull(), // Companies covered in this newsletter
+  companies: text("companies").notNull(),
   generatedAt: timestamp("generated_at").notNull().defaultNow(),
   sentAt: timestamp("sent_at"),
-  pdfPath: varchar("pdf_path"), // Path to generated PDF file
+  pdfPath: varchar("pdf_path"),
   emailSent: boolean("email_sent").notNull().default(false),
-  contentHash: varchar("content_hash"), // Hash of fetched article URLs for dedup caching
+  contentHash: varchar("content_hash"),
 });
 
 export const newslettersRelations = relations(newsletters, ({ one, many }) => ({
@@ -106,14 +95,14 @@ export const newslettersRelations = relations(newsletters, ({ one, many }) => ({
 
 export type Newsletter = typeof newsletters.$inferSelect;
 
-// Article table - stores individual news summaries in newsletters
+// Article table
 export const articles = pgTable("articles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   newsletterId: varchar("newsletter_id").notNull().references(() => newsletters.id, { onDelete: 'cascade' }),
   headline: text("headline").notNull(),
-  summary: text("summary").notNull(), // AI-generated Finshots-style summary
+  summary: text("summary").notNull(),
   sourceUrl: text("source_url").notNull(),
-  sourceName: varchar("source_name").notNull(), // e.g., "Bloomberg", "PaymentsJournal"
+  sourceName: varchar("source_name").notNull(),
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -127,16 +116,16 @@ export const articlesRelations = relations(articles, ({ one }) => ({
 
 export type Article = typeof articles.$inferSelect;
 
-// Scheduler runs table - tracks newsletter generation runs for reliability
+// Scheduler runs table
 export const schedulerRuns = pgTable("scheduler_runs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  runDate: timestamp("run_date").notNull(), // Date of the run (normalized to start of day)
+  runDate: timestamp("run_date").notNull(),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
-  status: varchar("status").notNull().default("running"), // running, completed, failed
+  status: varchar("status").notNull().default("running"),
   successCount: varchar("success_count").default("0"),
   failureCount: varchar("failure_count").default("0"),
-  triggerSource: varchar("trigger_source").notNull(), // cron, manual, startup, external
+  triggerSource: varchar("trigger_source").notNull(),
   errorMessage: text("error_message"),
 });
 

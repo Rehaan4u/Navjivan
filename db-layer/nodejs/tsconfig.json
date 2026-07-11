@@ -16,6 +16,7 @@
     "storage.ts" , 
     "schema.ts" 
   ],
+  //Excluded the node_modules cause the dependencies also have the .ts files and we don't want to config them
   "exclude" : [
     "node_modules",
     "dist"
