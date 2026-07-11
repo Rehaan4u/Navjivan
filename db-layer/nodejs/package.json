@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Creatign a seperate packaje.json file for the db-layer",
   "dependencies": {
-    "@neondatabase/erverless": "*",
+    "@neondatabase/serverless": "*",
     "drizzle-orm": "*",
     "ws":"*"
   }
