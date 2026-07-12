@@ -12,7 +12,7 @@
     "build:lambda": "esbuild ./server/lambda.ts --platform=node --bundle --format=cjs --external:pg-native --outdir=dist",
     "build:lambda-website": "esbuild ./server/lambda-website.ts --platform=node --bundle --format=cjs --outdir=dist",
     "build:lambda-website-secured": "esbuild ./server/lambda-website-secured.ts --platform=node --bundle --format=cjs --outdir=dist",
-    "build:token-authorizer" : "esbuild /.server/token-authorizer.ts --platform=node --bundle --format=cjs --outdir=dist --external:storage"
+    "build:token-authorizer" : "esbuild ./server/token-authorizer.ts --platform=node --bundle --format=cjs --outdir=dist --external:storage"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1063.0",
