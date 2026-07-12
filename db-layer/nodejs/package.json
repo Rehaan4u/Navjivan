@@ -4,7 +4,7 @@
   "description": "Creatign a seperate packaje.json file for the db-layer",
   "dependencies": {
     "@neondatabase/serverless": "*",
-    "drizzle-orm": "*",
+    "drizzle-orm": "^0.39.3",
     "drizzle-zod": "^0.8.3",
     "ws": "*",
     "zod": "^4.4.3"
