@@ -11,7 +11,8 @@
     "db:push": "drizzle-kit push",
     "build:lambda": "esbuild ./server/lambda.ts --platform=node --bundle --format=cjs --external:pg-native --outdir=dist",
     "build:lambda-website": "esbuild ./server/lambda-website.ts --platform=node --bundle --format=cjs --outdir=dist",
-    "build:lambda-website-secured": "esbuild ./server/lambda-website-secured.ts --platform=node --bundle --format=cjs --outdir=dist"
+    "build:lambda-website-secured": "esbuild ./server/lambda-website-secured.ts --platform=node --bundle --format=cjs --outdir=dist",
+    "build:token-authorizer" : "esbuild /.server/token-authorizer.ts --platform=node --bundle --format=cjs --outdir=dist --external:storage"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1063.0",
@@ -65,7 +66,6 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "framer-motion": "^11.13.1",
-    "google-auth-library": "^10.9.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.453.0",
     "memoizee": "^0.4.17",
