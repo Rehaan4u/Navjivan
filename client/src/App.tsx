@@ -9,7 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, login, logout } = useAuth();
 
   if (isLoading) {
     return (
@@ -22,16 +22,16 @@ function Router() {
     );
   }
 
-return (
-  <Switch>
-    {!isAuthenticated ? (
-      <Route path="/" component={Landing} />
-    ) : (
-      <Route path="/" component={Dashboard} />
-    )}
-    <Route component={NotFound} />
-  </Switch>
-);
+  return (
+    <Switch>
+      {!isAuthenticated ? (
+        <Route path="/" component={() => <Landing onLoginSuccess={login} />} />
+      ) : (
+        <Route path="/" component={() => <Dashboard onLogout={logout} />} />
+      )}
+      <Route component={NotFound} />
+    </Switch>
+  );
 }
 
 function App() {
