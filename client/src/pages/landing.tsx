@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { saveAuth } from "@/lib/auth";
+
+const GOOGLE_CLIENT_ID = "64548102157-matft6q184tjj7jucbodp3ub5s9vdfbj.apps.googleusercontent.com";
+// Confirm this is current: aws apigatewayv2 get-apis --region ap-south-1 --query "Items[?Name=='navjivan-api'].ApiEndpoint" --output text
+const API_BASE = "https://qlprgt28b3.execute-api.ap-south-1.amazonaws.com";
 
 // ── Animated floating node for the network visualization ──
 function FloatingNode({ x, y, size, color, delay }: {
@@ -57,13 +62,22 @@ function NewsCard({ title, source, x, y, delay }: {
   );
 }
 
-export default function Landing() {
+export default function Landing({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const [mouseX, setMouseX] = useState(50);
   const [mouseY, setMouseY] = useState(50);
   const [scrollY, setScrollY] = useState(0);
   const [typedText, setTypedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // ── Auth modal state ──
+  const [modalOpen, setModalOpen] = useState(false);
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [googleEmail, setGoogleEmail] = useState<string | null>(null);
+  const [accessCode, setAccessCode] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
 
   const fullText = "Cloud & Technology";
 
@@ -103,6 +117,80 @@ export default function Landing() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // ── Initialize Google Identity Services once ──
+  useEffect(() => {
+    // @ts-ignore
+    if (window.google) {
+      // @ts-ignore
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response: any) => {
+          setGoogleToken(response.credential);
+          try {
+            const payload = JSON.parse(atob(response.credential.split(".")[1]));
+            setGoogleEmail(payload.email || null);
+          } catch {
+            setGoogleEmail(null);
+          }
+          setAuthError("");
+        },
+      });
+    }
+  }, []);
+
+  // ── Render the real Google button into the modal once it's open ──
+  useEffect(() => {
+    if (modalOpen && googleBtnRef.current) {
+      // @ts-ignore
+      window.google?.accounts.id.renderButton(googleBtnRef.current, {
+        theme: "filled_blue",
+        size: "large",
+        width: 280,
+      });
+    }
+  }, [modalOpen]);
+
+  function openLoginModal() {
+    setAuthError("");
+    setModalOpen(true);
+  }
+
+  function closeLoginModal() {
+    setModalOpen(false);
+    setGoogleToken(null);
+    setGoogleEmail(null);
+    setAccessCode("");
+    setAuthError("");
+  }
+
+  async function handleVerify() {
+    if (!googleToken || !accessCode) {
+      setAuthError("Sign in with Google and enter your access code.");
+      return;
+    }
+    setVerifying(true);
+    setAuthError("");
+    try {
+      const res = await fetch(`${API_BASE}/auth/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${googleToken}`,
+          "x-access-code": accessCode,
+        },
+      });
+      if (!res.ok) throw new Error("Invalid access code or token.");
+      saveAuth(googleToken, accessCode);
+      setModalOpen(false);
+      onLoginSuccess();
+    } catch (err: any) {
+      setAuthError(err.message || "Login failed. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   const floatingNodes = [
     { x: 15, y: 20, size: 8,  color: "rgba(76,154,255,0.6)",  delay: 0 },
     { x: 80, y: 15, size: 12, color: "rgba(201,168,76,0.5)",  delay: 1 },
@@ -166,6 +254,10 @@ export default function Landing() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes modalFadeIn {
+          from { opacity: 0; transform: translateY(20px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
         .login-btn {
           transition: all 0.25s ease !important;
         }
@@ -207,6 +299,110 @@ export default function Landing() {
         transition: "left 0.3s ease, top 0.3s ease",
       }} />
 
+      {/* ── Login Modal ── */}
+      {modalOpen && (
+        <div
+          onClick={closeLoginModal}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(5,10,24,0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#0A1226",
+              border: "1px solid rgba(76,154,255,0.25)",
+              borderRadius: 16,
+              padding: "40px 36px",
+              width: 340,
+              maxWidth: "90vw",
+              animation: "modalFadeIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards",
+              fontFamily: "sans-serif",
+              position: "relative",
+            }}
+          >
+            <button
+              onClick={closeLoginModal}
+              style={{
+                position: "absolute", top: 16, right: 16,
+                background: "none", border: "none",
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 18, cursor: "pointer",
+              }}
+            >
+              ✕
+            </button>
+
+            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, color: "#fff" }}>
+              Sign in to Navjivan
+            </h3>
+
+            {/* Real Google button renders into this div */}
+            <div ref={googleBtnRef} style={{ display: "flex", justifyContent: "center", marginBottom: 20 }} />
+
+            {googleEmail && (
+              <p style={{ fontSize: 12, color: "rgba(76,154,255,0.8)", marginBottom: 16, textAlign: "center" }}>
+                Signed in as {googleEmail}
+              </p>
+            )}
+
+            {googleToken && (
+              <div>
+                <input
+                  type="text"
+                  placeholder="Access code"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    fontSize: 14,
+                    marginBottom: 12,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={handleVerify}
+                  disabled={verifying}
+                  className="login-btn"
+                  style={{
+                    width: "100%",
+                    background: "linear-gradient(135deg, #1a6fd8, #0052CC)",
+                    color: "#fff",
+                    border: "1px solid rgba(76,154,255,0.3)",
+                    borderRadius: 8,
+                    padding: "12px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: verifying ? "default" : "pointer",
+                    opacity: verifying ? 0.6 : 1,
+                  }}
+                >
+                  {verifying ? "Verifying..." : "Continue"}
+                </button>
+              </div>
+            )}
+
+            {authError && (
+              <p style={{ color: "#ff6b6b", fontSize: 12, marginTop: 12, textAlign: "center" }}>
+                {authError}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Navbar ── */}
       <nav style={{
         position: "sticky",
@@ -223,9 +419,7 @@ export default function Landing() {
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {/* Animated chakra logo */}
           <div style={{ position: "relative", width: 40, height: 40 }}>
-            {/* Outer ring spinning */}
             <div style={{
               position: "absolute", inset: 0,
               border: "2px solid rgba(76,154,255,0.4)",
@@ -233,7 +427,6 @@ export default function Landing() {
               animation: "spin-slow 8s linear infinite",
               borderTopColor: "#4C9AFF",
             }} />
-            {/* Inner ring spinning reverse */}
             <div style={{
               position: "absolute", inset: 6,
               border: "1.5px solid rgba(201,168,76,0.4)",
@@ -241,7 +434,6 @@ export default function Landing() {
               animation: "spin-reverse 5s linear infinite",
               borderTopColor: "#C9A84C",
             }} />
-            {/* Center dot */}
             <div style={{
               position: "absolute",
               inset: "50%",
@@ -279,7 +471,7 @@ export default function Landing() {
 
         <button
           className="login-btn"
-          onClick={() => window.location.href = "/api/auth/google"}
+          onClick={openLoginModal}
           style={{
             background: "linear-gradient(135deg, #1a6fd8, #0052CC)",
             color: "#ffffff",
@@ -298,41 +490,40 @@ export default function Landing() {
       </nav>
 
       {/* ── Hero ── */}
-          <section
-          ref={heroRef}
-          style={{
-            position: "relative",
-            zIndex: 1,
-            minHeight: "92vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            padding: "80px 80px",
-          }}
-        >
-
-          {/* Gandhi image on the right */}
-            <div style={{
-              position: "absolute",
-              right: "-60px",
-              top: "38%",
-              transform: "translateY(-55%)",
-              zIndex: 0,
-              pointerEvents: "none",
-              width: "58%",
-              maxWidth: 740,
-            }}>
-              <img
-                src="/gandhi.png"
-                alt="Navjivan — Gandhi with cloud globe"
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  opacity: 0.92,
-                  mixBlendMode: "screen",
-                }}
-              />
-            </div>
+      <section
+        ref={heroRef}
+        style={{
+          position: "relative",
+          zIndex: 1,
+          minHeight: "92vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          padding: "80px 80px",
+        }}
+      >
+        {/* Gandhi image on the right */}
+        <div style={{
+          position: "absolute",
+          right: "-60px",
+          top: "38%",
+          transform: "translateY(-55%)",
+          zIndex: 0,
+          pointerEvents: "none",
+          width: "58%",
+          maxWidth: 740,
+        }}>
+          <img
+            src="/gandhi.png"
+            alt="Navjivan — Gandhi with cloud globe"
+            style={{
+              width: "100%",
+              height: "auto",
+              opacity: 0.92,
+              mixBlendMode: "screen",
+            }}
+          />
+        </div>
         <div style={{
           maxWidth: 580,
           position: "relative",
@@ -435,7 +626,7 @@ export default function Landing() {
             }} />
             <button
               className="login-btn"
-              onClick={() => window.location.href = "/api/auth/google"}
+              onClick={openLoginModal}
               style={{
                 position: "relative",
                 background: "linear-gradient(135deg, #1a6fd8 0%, #0052CC 100%)",
@@ -562,7 +753,6 @@ export default function Landing() {
                   overflow: "hidden",
                 }}
               >
-                {/* Card glow on hover via border color change handled by CSS */}
                 <div style={{
                   fontSize: 11, fontWeight: 700,
                   color: item.color,
@@ -613,7 +803,6 @@ export default function Landing() {
             Stories like these, every morning
           </h2>
 
-          {/* Sample article cards */}
           {[
             {
               headline: "AWS Launches Next-Gen AI Inference Chips for Enterprise",
@@ -752,7 +941,7 @@ export default function Landing() {
             }} />
             <button
               className="login-btn"
-              onClick={() => window.location.href = "/api/auth/google"}
+              onClick={openLoginModal}
               style={{
                 position: "relative",
                 background: "linear-gradient(135deg, #1a6fd8, #0052CC)",
