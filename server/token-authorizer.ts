@@ -1,7 +1,7 @@
 import { OAuth2Client } from "google-auth-library";
 // Comes from the db-layer Lambda Layer, mounted at /opt/nodejs
 // (layer root is on NODE_PATH, so "storage" resolves to /opt/nodejs/storage.js)
-import { storage } from "storage";
+import { storage } from "./storage";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID as string;
 

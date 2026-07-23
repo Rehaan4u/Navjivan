@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
 import {
   index,
@@ -130,3 +131,23 @@ export const schedulerRuns = pgTable("scheduler_runs", {
 });
 
 export type SchedulerRun = typeof schedulerRuns.$inferSelect;
+
+export const articleSummaryCache = pgTable(
+  "article_summary_cache",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    company: varchar("company").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    headline: text("headline").notNull(),
+    summary: text("summary").notNull(),
+    sourceName: varchar("source_name").notNull(),
+    relevanceScore: varchar("relevance_score"),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_cache_company_url").on(table.company, table.sourceUrl),
+  ],
+);
+
+export type ArticleSummaryCache = typeof articleSummaryCache.$inferSelect;

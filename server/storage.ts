@@ -14,6 +14,7 @@ import {
   type SchedulerRun,
 } from "@shared/schema";
 import { accessCodes, type AccessCode } from "@shared/schema";
+import { articleSummaryCache, type ArticleSummaryCache } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, inArray } from "drizzle-orm";
 

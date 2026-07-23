@@ -14,6 +14,7 @@ import {
   type SchedulerRun,
 } from "./schema";
 import { accessCodes, type AccessCode } from "./schema";
+import { articleSummaryCache, type ArticleSummaryCache } from "./schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, inArray } from "drizzle-orm";
 
@@ -31,6 +32,14 @@ export interface IStorage {
   getAllActiveSubscriptions(): Promise<Subscription[]>;
   deactivateSubscription(userId: string): Promise<void>;
   reactivateSubscription(userId: string): Promise<void>;
+
+  getCachedSummary(company: string, sourceUrl: string): Promise<ArticleSummaryCache | undefined>;
+getCachedSummariesForCompany(company: string): Promise<ArticleSummaryCache[]>;
+upsertCachedSummary(entry: {
+  company: string; sourceUrl: string; headline: string; summary: string;
+  sourceName: string; relevanceScore?: string; publishedAt?: Date;
+}): Promise<ArticleSummaryCache>;
+cleanupExpiredCache(): Promise<void>;
 
   // Newsletter operations
   createNewsletter(data: {
@@ -96,6 +105,37 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     return record;
   }
+
+  async getCachedSummary(company: string, sourceUrl: string): Promise<ArticleSummaryCache | undefined> {
+  const [record] = await db.select().from(articleSummaryCache)
+    .where(and(eq(articleSummaryCache.company, company), eq(articleSummaryCache.sourceUrl, sourceUrl)))
+    .limit(1);
+  return record;
+}
+
+async getCachedSummariesForCompany(company: string): Promise<ArticleSummaryCache[]> {
+  return await db.select().from(articleSummaryCache).where(eq(articleSummaryCache.company, company));
+}
+
+async upsertCachedSummary(entry: {
+  company: string; sourceUrl: string; headline: string; summary: string;
+  sourceName: string; relevanceScore?: string; publishedAt?: Date;
+}): Promise<ArticleSummaryCache> {
+  const [record] = await db.insert(articleSummaryCache).values(entry)
+    .onConflictDoUpdate({
+      target: [articleSummaryCache.company, articleSummaryCache.sourceUrl],
+      set: { headline: entry.headline, summary: entry.summary, sourceName: entry.sourceName,
+             relevanceScore: entry.relevanceScore, publishedAt: entry.publishedAt, createdAt: new Date() },
+    })
+    .returning();
+  return record;
+}
+
+async cleanupExpiredCache(): Promise<void> {
+  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  await db.delete(articleSummaryCache).where(lt(articleSummaryCache.createdAt, cutoff));
+}
+
 
   async createAccessCode(code: string, email: string): Promise<AccessCode> {
     const [record] = await db
