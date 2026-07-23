@@ -67,7 +67,7 @@ function isWithinOneWeek(date: Date): boolean {
 // ✅ MD5 fingerprint of all article URLs — used to detect duplicate batches
 // ✅ Sorted before hashing so order doesn't affect the result
 // ============================
-function computeContentHash(urls: string[]): string {
+export function computeContentHash(urls: string[]): string {
   const sorted = [...urls].sort().join("|");
   return createHash("md5").update(sorted).digest("hex");
 }
@@ -431,7 +431,7 @@ async function scoreArticlesInBatches(
 // STEP 5: CAP TOP N PER SOURCE
 // ✅ Articles already sorted by score desc before this runs
 // ============================
-function capArticlesPerSource(
+export function capArticlesPerSource(
   articles: Array<NewsItem & { relevanceScore: number }>,
   maxPerSource: number = 2
 ): Array<NewsItem & { relevanceScore: number }> {
@@ -471,7 +471,7 @@ function getArticlesPerCompany(companyCount: number): number {
 // FILTER ALREADY SENT ARTICLES
 // ✅ Prevents same article appearing in multiple newsletters
 // ============================
-async function filterAlreadySentArticles(
+export async function filterAlreadySentArticles(
   articles: NewsItem[],
   subscriptionId: string
 ): Promise<NewsItem[]> {
