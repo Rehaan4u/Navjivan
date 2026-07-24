@@ -7,7 +7,7 @@ import pRetry, { AbortError } from "p-retry";
 async function invokeClause(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens: number = 1200
+  maxTokens: number = 120
 ): Promise<string> {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
