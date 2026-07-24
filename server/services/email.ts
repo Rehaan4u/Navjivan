@@ -1,10 +1,10 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { storage } from "../storage";
+import { storage } from "storage";   // was "../storage"
 import { buildEmailHtml } from "./email-template";
 
 // ── SES Client Setup ──
 const sesClient = new SESClient({
-  region: "ap-south-2", // hardcoded since AWS_REGION is reserved in Lambda
+  region: "ap-south-1", // hardcoded since AWS_REGION is reserved in Lambda
 });
 
 const USE_REAL_EMAIL = !!process.env.SES_FROM_ADDRESS;

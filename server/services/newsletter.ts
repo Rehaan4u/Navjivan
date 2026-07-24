@@ -1,5 +1,5 @@
-import { storage } from "../storage";
-import type { Article } from "@shared/schema";
+import { storage } from "storage";                              // was "../storage"
+import type { Article } from "../../db-layer/nodejs/schema";     // was "@shared/schema"
 import { scrapeArticleContent, extractRealUrlFromGoogleDescription } from "./scraper";
 import { recordFeedHealth, printFeedHealthSummary } from "./feedHealth";
 import { generateNewsSummary, scoreArticleRelevance } from "../bedrock";
@@ -303,7 +303,7 @@ async function fetchAndScrapeGoogleNews(
 // ============================
 // STEP 2: REMOVE DUPLICATES
 // ============================
-function removeDuplicates(articles: NewsItem[]): NewsItem[] {
+export function removeDuplicates(articles: NewsItem[]): NewsItem[] {
   const urlSet = new Set<string>();
   const fingerprintSet = new Set<string>();
   const unique: NewsItem[] = [];
@@ -328,7 +328,7 @@ function removeDuplicates(articles: NewsItem[]): NewsItem[] {
 // ============================
 // STEP 3: KEYWORD FILTER
 // ============================
-function filterRelevantArticles(
+export function filterRelevantArticles(
   articles: NewsItem[],
   company: string
 ): NewsItem[] {
@@ -364,7 +364,7 @@ function filterRelevantArticles(
 // ✅ If 3+ pass in a batch → stop early for this source (enough found)
 // ✅ If 0 pass in a batch → try next 5 from same source
 // ============================
-async function scoreArticlesInBatches(
+export async function scoreArticlesInBatches(
   articles: NewsItem[],
   company: string
 ): Promise<Array<NewsItem & { relevanceScore: number }>> {
@@ -527,7 +527,7 @@ export async function filterAlreadySentArticles(
 // MAIN FETCH FUNCTION PER COMPANY
 // ✅ Curated RSS first → score → if not enough → Google RSS + scrape → score
 // ============================
-async function fetchNewsForCompany(
+export async function fetchNewsForCompany(
   company: string,
   articleLimit: number = 2
 ): Promise<NewsItem[]> {
